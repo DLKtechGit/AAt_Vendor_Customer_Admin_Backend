@@ -24,8 +24,19 @@ const adminSchema = new mongoose.Schema({
      dateAt:{type:Date,default: Date.now}
 
     }
-  ]
-,
+  ],
+  CustomerbannerImgs: {
+    banner1: {type:String},
+    banner2:  {type:String},
+    banner3:  {type:String}
+  }
+, 
+VendorbannerImgs: {
+  banner1: {type:String},
+  banner2:  {type:String},
+  banner3:  {type:String}
+}
+, 
 });
 
 const adminModel = mongoose.model("admin",adminSchema)

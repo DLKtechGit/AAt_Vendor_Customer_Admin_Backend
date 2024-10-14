@@ -5,7 +5,10 @@ const crypto = require("crypto");
 const vendorModel = require("../models/vendor");
 const bookingModel = require("../models/booking");
 const mongoose = require("mongoose");
-const admin = require("../firebase")
+const admin = require("../firebase");
+const {customerChat , customerMessage} = require("../models/chatandMessageForCustomer");
+// const customerMessage = require("../models/customerMessage");
+
 
 const signup = async (req, res) => {
   const { userName, email, phoneNumber, address, password } = req.body;
@@ -420,6 +423,350 @@ const AvailableCarsforBooking = async (req, res) => {
   }
 };
 
+const availableAutosforBooking = async (req, res) => {
+  try {
+    const { tripType, pickUpDate, returnDate } = req.body;
+
+    if (!pickUpDate || !tripType) {
+      return res
+        .status(400)
+        .send({ message: "pickUpDate and returnDate is required" });
+    }
+
+    if (tripType === "Round Trip" && !returnDate) {
+      return res.status(400).send({ message: "Return date is required" });
+    }
+
+    const formattedPickUpDate = new Date(pickUpDate);
+
+    if (isNaN(formattedPickUpDate.getTime())) {
+      return res.status(400).send({ message: "Invalid pickUpDate format" });
+    }
+    const vendors = await vendorModel.find();
+
+    const availableAutosList = [];
+
+    vendors.forEach((vendor) => {
+      const availableAutos =
+        vendor.vehicles?.autos.filter((auto) => {
+          const carReturnDate = new Date(auto.returnDate);
+
+          return (
+            auto.vehicleApprovedByAdmin === "approved" &&
+            auto.vehicleAvailable === "yes"
+          );
+        }) || [];
+
+      availableAutos.forEach((auto) => {
+        availableAutosList.push({
+          vendorId: vendor._id,
+          vendorName: vendor.name,
+          vendorEmail: vendor.email,
+          vendorPhoneNumber: vendor.phoneNumber,
+          vendorAddress: vendor.address,
+          carDetails: auto,
+        });
+      });
+    });
+
+    if (availableAutosList.length === 0) {
+      return res
+        .status(404)
+        .send({ message: "No available autos found for the given date" });
+    }
+
+    res.status(200).send({
+      message: "Available autos retrieved successfully",
+      availableAutos: availableAutosList,
+    });
+  } catch (error) {
+    res
+      .status(500)
+      .send({ message: "Internal Server Error", error: error.message });
+  }
+};
+
+const AvailableVansforBooking = async (req, res) => {
+  try {
+    const { tripType, pickUpDate, returnDate } = req.body;
+
+    if (!pickUpDate || !tripType) {
+      return res
+        .status(400)
+        .send({ message: "pickUpDate and returnDate is required" });
+    }
+
+    if (tripType === "Round Trip" && !returnDate) {
+      return res.status(400).send({ message: "Return date is required" });
+    }
+
+    const formattedPickUpDate = new Date(pickUpDate);
+
+    if (isNaN(formattedPickUpDate.getTime())) {
+      return res.status(400).send({ message: "Invalid pickUpDate format" });
+    }
+    const vendors = await vendorModel.find();
+
+    const availableVansList = [];
+
+    vendors.forEach((vendor) => {
+      const availableVans =
+        vendor.vehicles?.vans.filter((van) => {
+          const vanReturnDate = new Date(van.returnDate);
+
+          return (
+            (van.vehicleApprovedByAdmin === "approved" &&
+              van.vehicleAvailable === "no" &&
+              formattedPickUpDate > vanReturnDate) ||
+            (van.vehicleApprovedByAdmin === "approved" &&
+              van.vehicleAvailable === "yes")
+          );
+        }) || [];
+
+      availableVans.forEach((van) => {
+        availableVansList.push({
+          vendorId: vendor._id,
+          vendorName: vendor.name,
+          vendorEmail: vendor.email,
+          vendorPhoneNumber: vendor.phoneNumber,
+          vendorAddress: vendor.address,
+          carDetails: van,
+        });
+      });
+    });
+
+    if (availableVansList.length === 0) {
+      return res
+        .status(404)
+        .send({ message: "No available vans found for the given date" });
+    }
+
+    res.status(200).send({
+      message: "Available vans retrieved successfully",
+      availableVans: availableVansList,
+    });
+  } catch (error) {
+    res
+      .status(500)
+      .send({ message: "Internal Server Error", error: error.message });
+  }
+};
+
+const AvailableBusesforBooking = async (req, res) => {
+  try {
+    const { tripType, pickUpDate, returnDate } = req.body;
+
+    if (!pickUpDate || !tripType) {
+      return res
+        .status(400)
+        .send({ message: "pickUpDate and returnDate is required" });
+    }
+
+    if (tripType === "Round Trip" && !returnDate) {
+      return res.status(400).send({ message: "Return date is required" });
+    }
+
+    const formattedPickUpDate = new Date(pickUpDate);
+
+    if (isNaN(formattedPickUpDate.getTime())) {
+      return res.status(400).send({ message: "Invalid pickUpDate format" });
+    }
+    const vendors = await vendorModel.find();
+
+    const availableBusesList = [];
+
+    vendors.forEach((vendor) => {
+      const availablebuses =
+        vendor.vehicles?.buses.filter((bus) => {
+          const busReturnDate = new Date(bus.returnDate);
+
+          return (
+            (bus.vehicleApprovedByAdmin === "approved" &&
+              bus.vehicleAvailable === "no" &&
+              formattedPickUpDate > busReturnDate) ||
+            (bus.vehicleApprovedByAdmin === "approved" &&
+              bus.vehicleAvailable === "yes")
+          );
+        }) || [];
+
+      availablebuses.forEach((bus) => {
+        availableBusesList.push({
+          vendorId: vendor._id,
+          vendorName: vendor.name,
+          vendorEmail: vendor.email,
+          vendorPhoneNumber: vendor.phoneNumber,
+          vendorAddress: vendor.address,
+          carDetails: bus,
+        });
+      });
+    });
+
+    if (availableBusesList.length === 0) {
+      return res
+        .status(404)
+        .send({ message: "No available buses found for the given date" });
+    }
+
+    res.status(200).send({
+      message: "Available buses retrieved successfully",
+      availableBuses: availableBusesList,
+    });
+  } catch (error) {
+    res
+      .status(500)
+      .send({ message: "Internal Server Error", error: error.message });
+  }
+};
+
+const AvailableTrucksforBooking = async (req, res) => {
+  try {
+    const { tripType, pickUpDate, returnDate } = req.body;
+
+    if (!pickUpDate || !tripType) {
+      return res
+        .status(400)
+        .send({ message: "pickUpDate and returnDate is required" });
+    }
+
+    if (tripType === "Round Trip" && !returnDate) {
+      return res.status(400).send({ message: "Return date is required" });
+    }
+
+    const formattedPickUpDate = new Date(pickUpDate);
+
+    if (isNaN(formattedPickUpDate.getTime())) {
+      return res.status(400).send({ message: "Invalid pickUpDate format" });
+    }
+    const vendors = await vendorModel.find();
+
+    const availableTruksList = [];
+
+    vendors.forEach((vendor) => {
+      const availableTrucks =
+        vendor.vehicles?.trucks.filter((truck) => {
+          const truckReturnDate = new Date(truck.returnDate);
+
+          return (
+            (truck.vehicleApprovedByAdmin === "approved" &&
+              truck.vehicleAvailable === "no" &&
+              formattedPickUpDate > truckReturnDate) ||
+            (truck.vehicleApprovedByAdmin === "approved" &&
+              truck.vehicleAvailable === "yes")
+          );
+        }) || [];
+
+      availableTrucks.forEach((truck) => {
+        availableTruksList.push({
+          vendorId: vendor._id,
+          vendorName: vendor.name,
+          vendorEmail: vendor.email,
+          vendorPhoneNumber: vendor.phoneNumber,
+          vendorAddress: vendor.address,
+          carDetails: truck,
+        });
+      });
+    });
+
+    if (availableTruksList.length === 0) {
+      return res
+        .status(404)
+        .send({ message: "No available trucks found for the given date" });
+    }
+
+    res.status(200).send({
+      message: "Available trucks retrieved successfully",
+      availableTrucks: availableTruksList,
+    });
+  } catch (error) {
+    res
+      .status(500)
+      .send({ message: "Internal Server Error", error: error.message });
+  }
+};
+
+const AvailableVehiclesForBooking = async (req, res) => {
+  try {
+    const { tripType, pickUpDate, returnDate, vehicleType } = req.body;
+
+    if (!pickUpDate || !tripType || !vehicleType) {
+      return res.status(400).send({
+        message: "pickUpDate, tripType, and vehicleType are required",
+      });
+    }
+
+    if (tripType === "Round Trip" && !returnDate) {
+      return res.status(400).send({ message: "Return date is required" });
+    }
+
+    const formattedPickUpDate = new Date(pickUpDate);
+    if (isNaN(formattedPickUpDate.getTime())) {
+      return res.status(400).send({ message: "Invalid pickUpDate format" });
+    }
+
+    const validVehicleTypes = ["cars", "vans", "buses", "autos", "trucks"];
+    if (!validVehicleTypes.includes(vehicleType)) {
+      return res.status(400).send({ message: "Invalid vehicleType provided" });
+    }
+
+    const vendors = await vendorModel.find();
+    const availableVehiclesList = [];
+
+    vendors.forEach((vendor) => {
+      let availableVehicles;
+
+      if (vehicleType === "autos" || vehicleType === "trucks") {
+        availableVehicles =
+          vendor.vehicles?.[vehicleType].filter((vehicle) => {
+            return (
+              vehicle.vehicleApprovedByAdmin === "approved" &&
+              vehicle.vehicleAvailable === "yes"
+            );
+          }) || [];
+      } else {
+        availableVehicles =
+          vendor.vehicles?.[vehicleType].filter((vehicle) => {
+            const vehicleReturnDate = new Date(vehicle.returnDate);
+
+            return (
+              (vehicle.vehicleApprovedByAdmin === "approved" &&
+                vehicle.vehicleAvailable === "no" &&
+                formattedPickUpDate > vehicleReturnDate) ||
+              (vehicle.vehicleApprovedByAdmin === "approved" &&
+                vehicle.vehicleAvailable === "yes")
+            );
+          }) || [];
+      }
+
+      availableVehicles.forEach((vehicle) => {
+        availableVehiclesList.push({
+          vendorId: vendor._id,
+          vendorName: vendor.name,
+          vendorEmail: vendor.email,
+          vendorPhoneNumber: vendor.phoneNumber,
+          vendorAddress: vendor.address,
+          vehicleDetails: vehicle,
+        });
+      });
+    });
+
+    if (availableVehiclesList.length === 0) {
+      return res.status(404).send({
+        message: `No available ${vehicleType} found for the given date`,
+      });
+    }
+
+    res.status(200).send({
+      message: `Available ${vehicleType} retrieved successfully`,
+      availableVehicles: availableVehiclesList,
+    });
+  } catch (error) {
+    res.status(500).send({
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};
+
 const bookcar = async (req, res) => {
   const {
     customerId,
@@ -431,8 +778,11 @@ const bookcar = async (req, res) => {
     returnDate,
     totalKm,
     tripType,
+    advanceAmount,
+    receiversName,
+    receiversNumber,
   } = req.body;
- 
+
   if (
     !vendorId ||
     !customerId ||
@@ -441,7 +791,6 @@ const bookcar = async (req, res) => {
     !dropLocation ||
     !pickupDate ||
     !tripType ||
-    // !returnDate ||
     !totalKm
   ) {
     return res.status(400).send({ message: "Please fill all required field" });
@@ -491,7 +840,9 @@ const bookcar = async (req, res) => {
       pickupDate,
       returnDate,
       totalKm,
-      advanceAmount: "500",
+      advanceAmount,
+      receiversName,
+      receiversNumber,
       customer: {
         customerName: customer.userName,
         customerEmail: customer.email,
@@ -605,7 +956,7 @@ const cancelBookingByCustomer = async (req, res) => {
     }
 
     if (booking.customer.customerId.toString() !== customerId) {
-      return res 
+      return res
         .status(403)
         .send({ message: "You are not authorized to cancel this booking" });
     }
@@ -613,6 +964,19 @@ const cancelBookingByCustomer = async (req, res) => {
     const vendor = await vendorModel.findById(booking.vehicleDetails.vendorId);
     if (!vendor) {
       return res.status(404).send({ message: "Vendor not found" });
+    }
+
+    const currentDateTime = new Date();
+    const pickupDateTime = new Date(booking.pickupDate);
+
+    const timeDifferenceInHours =
+      (pickupDateTime - currentDateTime) / (1000 * 60 * 60);
+
+    if (timeDifferenceInHours < 24) {
+      return res.status(403).send({
+        message:
+          "You can only cancel the booking before 24 hours of the pickup time.",
+      });
     }
 
     const currentMonthCancellations = customer.cancellationHistory.filter(
@@ -627,9 +991,17 @@ const cancelBookingByCustomer = async (req, res) => {
     );
 
     if (currentMonthCancellations.length >= 2) {
-      return res.status(403).send({
-        message:
-          "You have exceeded the cancellation limit for this month. You can only cancel bookings two times in a month.",
+      const penaltyAmount = 50;
+      customer.penaltyAmount = customer.penaltyAmount
+        ? customer.penaltyAmount + penaltyAmount
+        : penaltyAmount;
+
+      await customer.save();
+
+      const penaltyMessage = `You have cancelled more than 2 bookings this month. A penalty of $${penaltyAmount} has been applied to your account.`;
+      customer.messages.push({
+        title: "Cancellation Penalty",
+        description: penaltyMessage,
       });
     }
 
@@ -654,20 +1026,35 @@ const cancelBookingByCustomer = async (req, res) => {
         .send({ message: "Vehicle not found in the vendor's inventory" });
     }
 
-    foundVehicle.vehicleAvailable = "yes";
-    foundVehicle.returnDate = undefined;
+    const activeBookings = await bookingModel.find({
+      "vehicleDetails.foundVehicle._id": foundVehicle._id,
+      vendorApprovedStatus: { $in: ["pending", "approved"] }, 
+      tripStatus: { $nin: ["ongoing", "completed", "cancelled"] } 
+    });
+    
 
+    const vehicleAvailableLogic = () => {
+      if (activeBookings.length > 0) {
+        foundVehicle.vehicleAvailable = "no"; 
+      } else {
+        foundVehicle.vehicleAvailable = "yes"; 
+        foundVehicle.returnDate = undefined;
+      }
+    };
+
+  
+    vehicleAvailableLogic(); 
     await vendor.save();
 
     booking.customerCancelled = true;
     booking.bookingStatus = "cancelled";
     booking.customerCancelledReason = reason;
-    booking.tripStatus = 'cancelled'
+    booking.tripStatus = "cancelled";
     await booking.save();
 
     const cancellationMessage = {
       title: "Booking Cancelled",
-      description: `Dear ${vendor.userName}, the booking for the vehicle ${foundVehicle.vehicleModel} (${foundVehicle.licensePlate}) has been cancelled by the customer. Reason: ${reason}`,
+      description: `Dear ${vendor.userName}, the booking for the ${foundVehicle.subCategory} , ${foundVehicle.vehicleModel} (${foundVehicle.licensePlate}) has been cancelled by the customer. Reason: ${reason}`,
     };
     vendor.messages.push(cancellationMessage);
     await vendor.save();
@@ -684,13 +1071,17 @@ const cancelBookingByCustomer = async (req, res) => {
   }
 };
 
+
+
 const storeFCMTokenToCustomer = async (req, res) => {
   const { customerId, fcmToken } = req.body;
 
   if (!customerId || !fcmToken) {
-    return res.status(400).send({ message: "customer ID and FCM token are required" });
+    return res
+      .status(400)
+      .send({ message: "customer ID and FCM token are required" });
   }
- 
+
   try {
     const customer = await customerModel.findById(customerId);
     if (!customer) {
@@ -700,15 +1091,58 @@ const storeFCMTokenToCustomer = async (req, res) => {
     customer.fcmToken = fcmToken;
     await customer.save();
 
-    res.status(200).send({ message: "FCM token stored successfully",customer });
+    res
+      .status(200)
+      .send({ message: "FCM token stored successfully", customer });
   } catch (error) {
-    res.status(500).send({ message: "Internal Server Error", error: error.message });
+    res
+      .status(500)
+      .send({ message: "Internal Server Error", error: error.message });
   }
 };
 
+const CustomerSendMessage = async (req, res) => {
+  const { customerId, adminId, content } = req.body;
+
+  if(!customerId || !adminId  || !content){
+    return res.status(400).send({message:"Please fill the all required fields"})
+  }
+
+  try {
+    let chat = await customerChat.findOne({ customer: customerId, admin: adminId });
+
+    if (!chat) {
+      chat = new customerChat({
+        customer: customerId,
+        admin: adminId
+      });
+      await chat.save(); 
+    }
+
+    const message = new customerMessage({
+      sender: customerId,
+      receiver: adminId,
+      content,
+      senderModel: 'customers', 
+      receiverModel: 'admin'    
+    });
+
+    await message.save();
+
+    chat.messages.push(message._id);
+    chat.lastUpdated = new Date();
+
+    await chat.save();
+
+    return res.status(200).json({ message: 'Message sent', chat });
+  } catch (error) {
+    return res.status(500).json({ error: 'Internal Server Error', details: error.message });
+  }
+};
+ 
 
 module.exports = {
-  signup,
+  signup, 
   login,
   forgotPassword,
   validatePin,
@@ -721,5 +1155,11 @@ module.exports = {
   bookcar,
   getBookingsByCustomerId,
   cancelBookingByCustomer,
-  storeFCMTokenToCustomer
+  storeFCMTokenToCustomer,
+  availableAutosforBooking,
+  AvailableVansforBooking,
+  AvailableVehiclesForBooking,
+  AvailableBusesforBooking,
+  AvailableTrucksforBooking,
+  CustomerSendMessage
 };

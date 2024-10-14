@@ -4,8 +4,8 @@ const vanSchema = require("../models/van");
 const autoSchema = require("../models/auto");
 const busSchema = require("../models/bus");
 const truckSchema = require("../models/truck");
-
-
+ 
+ 
 const vendorSchema = new mongoose.Schema({
   userName: {
     type: String,
@@ -32,14 +32,14 @@ const vendorSchema = new mongoose.Schema({
   },
   address: {
     type: String,
-    required: [true, "address is required"],
+    // required: [true, "address is required"],
   },
   role: {
     type: String,
     default: "vendor",
   },
   resetPin: {
-    type: Number,
+    type: String,
   },
   pinExpiresAt: {
     type: Date,
@@ -50,7 +50,7 @@ const vendorSchema = new mongoose.Schema({
   },
   fcmToken: {type: String}, 
 
-  vehicles: {
+  vehicles: { 
     cars: [carSchema],
     vans: [vanSchema],
     autos: [autoSchema],

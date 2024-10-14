@@ -16,8 +16,7 @@ router.post("/getVendorById", auth.validate, vendor.getVendorById);
 router.get("/getAllVendors", auth.validate, vendor.getAllVendors);
 router.post("/editVendorProfile", auth.validate, vendor.editVendorProfile);
 router.post("/editPassword", auth.validate, vendor.editPassword),
-  router.get(
-    "/getAllVehiclesByVendor/:vendorId",
+router.get("/getAllVehiclesByVendor/:vendorId",
     vendor.getAllVehiclesByVendor
   ),
   router.get("/getVendorCars/:vendorId", vendor.getVendorAuots),
@@ -27,10 +26,10 @@ router.post(
   upload.fields([
     { name: "vehicleImages", maxCount: 5 },
     { name: "ownerImage", maxCount: 1 },
-    { name: "ownerAdharCard", maxCount: 1 },
-    { name: "ownerDrivingLicense", maxCount: 1 },
-    { name: "vehicleInsurance", maxCount: 1 },
-    { name: "vehicleRC", maxCount: 1 },
+    { name: "ownerAdharCard", maxCount: 2 },
+    { name: "ownerDrivingLicense", maxCount: 2 },
+    { name: "vehicleInsurance", maxCount: 2 },
+    { name: "vehicleRC", maxCount: 2 },
   ]),
   auth.validate,
   vendor.editCar
@@ -41,11 +40,12 @@ router.post(
   upload.fields([
     { name: "vehicleImages", maxCount: 5 },
     { name: "ownerImage", maxCount: 1 },
-    { name: "ownerAdharCard", maxCount: 1 },
-    { name: "ownerDrivingLicense", maxCount: 1 },
-    { name: "vehicleInsurance", maxCount: 1 },
-    { name: "vehicleRC", maxCount: 1 },
+    { name: "ownerAdharCard", maxCount: 2 },
+    { name: "ownerDrivingLicense", maxCount: 2 },
+    { name: "vehicleInsurance", maxCount: 2 },
+    { name: "vehicleRC", maxCount: 2 },
   ]),
+
   vendor.createCar
 );
 
@@ -54,10 +54,10 @@ router.post(
   upload.fields([
     { name: "vehicleImages", maxCount: 5 },
     { name: "ownerImage", maxCount: 1 },
-    { name: "ownerAdharCard", maxCount: 1 },
-    { name: "ownerDrivingLicense", maxCount: 1 },
-    { name: "vehicleInsurance", maxCount: 1 },
-    { name: "vehicleRC", maxCount: 1 },
+    { name: "ownerAdharCard", maxCount: 2 },
+    { name: "ownerDrivingLicense", maxCount: 2 },
+    { name: "vehicleInsurance", maxCount: 2 },
+    { name: "vehicleRC", maxCount: 2 },
   ]),
   vendor.recreateCar
 );
@@ -67,10 +67,10 @@ router.post(
   upload.fields([
     { name: "vehicleImages", maxCount: 5 },
     { name: "ownerImage", maxCount: 1 },
-    { name: "ownerAdharCard", maxCount: 1 },
-    { name: "ownerDrivingLicense", maxCount: 1 },
-    { name: "vehicleInsurance", maxCount: 1 },
-    { name: "vehicleRC", maxCount: 1 },
+    { name: "ownerAdharCard", maxCount: 2 },
+    { name: "ownerDrivingLicense", maxCount: 2 },
+    { name: "vehicleInsurance", maxCount: 2 },
+    { name: "vehicleRC", maxCount: 2 },
   ]),
   vendor.createAuto
 );
@@ -80,10 +80,10 @@ router.post(
   upload.fields([
     { name: "vehicleImages", maxCount: 5 },
     { name: "ownerImage", maxCount: 1 },
-    { name: "ownerAdharCard", maxCount: 1 },
-    { name: "ownerDrivingLicense", maxCount: 1 },
-    { name: "vehicleInsurance", maxCount: 1 },
-    { name: "vehicleRC", maxCount: 1 },
+    { name: "ownerAdharCard", maxCount: 2 },
+    { name: "ownerDrivingLicense", maxCount: 2 },
+    { name: "vehicleInsurance", maxCount: 2 },
+    { name: "vehicleRC", maxCount: 2 },
   ]),
   vendor.recreateAuto
 );
@@ -93,10 +93,10 @@ router.post(
   upload.fields([
     { name: "vehicleImages", maxCount: 5 },
     { name: "ownerImage", maxCount: 1 },
-    { name: "ownerAdharCard", maxCount: 1 },
-    { name: "ownerDrivingLicense", maxCount: 1 },
-    { name: "vehicleInsurance", maxCount: 1 },
-    { name: "vehicleRC", maxCount: 1 },
+    { name: "ownerAdharCard", maxCount: 2 },
+    { name: "ownerDrivingLicense", maxCount: 2 },
+    { name: "vehicleInsurance", maxCount: 2 },
+    { name: "vehicleRC", maxCount: 2 },
   ]),
   vendor.editAuto
 );
@@ -106,10 +106,10 @@ router.post(
   upload.fields([
     { name: "vehicleImages", maxCount: 5 },
     { name: "ownerImage", maxCount: 1 },
-    { name: "ownerAdharCard", maxCount: 1 },
-    { name: "ownerDrivingLicense", maxCount: 1 },
-    { name: "vehicleInsurance", maxCount: 1 },
-    { name: "vehicleRC", maxCount: 1 },
+    { name: "ownerAdharCard", maxCount: 2 },
+    { name: "ownerDrivingLicense", maxCount: 2 },
+    { name: "vehicleInsurance", maxCount: 2 },
+    { name: "vehicleRC", maxCount: 2 },
   ]),
   vendor.createVan
 );
@@ -119,10 +119,10 @@ router.post(
   upload.fields([
     { name: "vehicleImages", maxCount: 5 },
     { name: "ownerImage", maxCount: 1 },
-    { name: "ownerAdharCard", maxCount: 1 },
-    { name: "ownerDrivingLicense", maxCount: 1 },
-    { name: "vehicleInsurance", maxCount: 1 },
-    { name: "vehicleRC", maxCount: 1 },
+    { name: "ownerAdharCard", maxCount: 2 },
+    { name: "ownerDrivingLicense", maxCount: 2 },
+    { name: "vehicleInsurance", maxCount: 2 },
+    { name: "vehicleRC", maxCount: 2 },
   ]),
   vendor.recreateVan
 );
@@ -134,10 +134,10 @@ router.post(
   upload.fields([
     { name: "vehicleImages", maxCount: 5 },
     { name: "ownerImage", maxCount: 1 },
-    { name: "ownerAdharCard", maxCount: 1 },
-    { name: "ownerDrivingLicense", maxCount: 1 },
-    { name: "vehicleInsurance", maxCount: 1 },
-    { name: "vehicleRC", maxCount: 1 },
+    { name: "ownerAdharCard", maxCount: 2 },
+    { name: "ownerDrivingLicense", maxCount: 2 },
+    { name: "vehicleInsurance", maxCount: 2 },
+    { name: "vehicleRC", maxCount: 2 },
   ]),
   vendor.editVan
 );
@@ -147,10 +147,10 @@ router.post(
   upload.fields([
     { name: "vehicleImages", maxCount: 5 },
     { name: "ownerImage", maxCount: 1 },
-    { name: "ownerAdharCard", maxCount: 1 },
-    { name: "ownerDrivingLicense", maxCount: 1 },
-    { name: "vehicleInsurance", maxCount: 1 },
-    { name: "vehicleRC", maxCount: 1 },
+    { name: "ownerAdharCard", maxCount: 2 },
+    { name: "ownerDrivingLicense", maxCount: 2 },
+    { name: "vehicleInsurance", maxCount: 2 },
+    { name: "vehicleRC", maxCount: 2 },
   ]),
   vendor.createbus
 );
@@ -160,10 +160,10 @@ router.post(
   upload.fields([
     { name: "vehicleImages", maxCount: 5 },
     { name: "ownerImage", maxCount: 1 },
-    { name: "ownerAdharCard", maxCount: 1 },
-    { name: "ownerDrivingLicense", maxCount: 1 },
-    { name: "vehicleInsurance", maxCount: 1 },
-    { name: "vehicleRC", maxCount: 1 },
+    { name: "ownerAdharCard", maxCount: 2 },
+    { name: "ownerDrivingLicense", maxCount: 2 },
+    { name: "vehicleInsurance", maxCount: 2 },
+    { name: "vehicleRC", maxCount: 2 },
   ]),
   vendor.recreatebus
 );
@@ -171,68 +171,94 @@ router.post(
 router.get("/getVendorBus/:vendorId", vendor.getVendorBus);
 
 router.post(
-    "/editBus/:vendorId/:vehicleId",
-    upload.fields([
-      { name: "vehicleImages", maxCount: 5 },
-      { name: "ownerImage", maxCount: 1 },
-      { name: "ownerAdharCard", maxCount: 1 },
-      { name: "ownerDrivingLicense", maxCount: 1 },
-      { name: "vehicleInsurance", maxCount: 1 },
-      { name: "vehicleRC", maxCount: 1 },
-    ]),
-    vendor.editBus
-  );  
+  "/editBus/:vendorId/:vehicleId",
+  upload.fields([
+    { name: "vehicleImages", maxCount: 5 },
+    { name: "ownerImage", maxCount: 1 },
+    { name: "ownerAdharCard", maxCount: 2 },
+    { name: "ownerDrivingLicense", maxCount: 2 },
+    { name: "vehicleInsurance", maxCount: 2 },
+    { name: "vehicleRC", maxCount: 2 },
+  ]),
+  vendor.editBus
+);
 
-  router.post(
-    "/createTruck",
-    upload.fields([
-      { name: "vehicleImages", maxCount: 5 },
-      { name: "ownerImage", maxCount: 1 },
-      { name: "ownerAdharCard", maxCount: 1 },
-      { name: "ownerDrivingLicense", maxCount: 1 },
-      { name: "vehicleInsurance", maxCount: 1 },
-      { name: "vehicleRC", maxCount: 1 },
-    ]),
-    vendor.createTruck
-  );
- 
-  router.post( 
-    "/recreateTruck",
-    upload.fields([
-      { name: "vehicleImages", maxCount: 5 },
-      { name: "ownerImage", maxCount: 1 },
-      { name: "ownerAdharCard", maxCount: 1 },
-      { name: "ownerDrivingLicense", maxCount: 1 },
-      { name: "vehicleInsurance", maxCount: 1 },
-      { name: "vehicleRC", maxCount: 1 },
-    ]),
-    vendor.recreateTruck
-  );
+router.post(
+  "/createTruck",
+  upload.fields([
+    { name: "vehicleImages", maxCount: 5 },
+    { name: "ownerImage", maxCount: 1 },
+    { name: "ownerAdharCard", maxCount: 2 },
+    { name: "ownerDrivingLicense", maxCount: 2 },
+    { name: "vehicleInsurance", maxCount: 2 },
+    { name: "vehicleRC", maxCount: 2 },
+  ]),
+  vendor.createTruck
+);
 
-  router.get("/getVendorTruck/:vendorId", vendor.getVendorTruck);
+router.post(
+  "/recreateTruck",
+  upload.fields([
+    { name: "vehicleImages", maxCount: 5 },
+    { name: "ownerImage", maxCount: 1 },
+    { name: "ownerAdharCard", maxCount: 2 },
+    { name: "ownerDrivingLicense", maxCount: 2 },
+    { name: "vehicleInsurance", maxCount: 2 },
+    { name: "vehicleRC", maxCount: 2 },
+  ]),
+  vendor.recreateTruck
+);
 
-  router.post(
-    "/editTruck/:vendorId/:vehicleId",
-    upload.fields([
-      { name: "vehicleImages", maxCount: 5 },
-      { name: "ownerImage", maxCount: 1 },
-      { name: "ownerAdharCard", maxCount: 1 },
-      { name: "ownerDrivingLicense", maxCount: 1 },
-      { name: "vehicleInsurance", maxCount: 1 },
-      { name: "vehicleRC", maxCount: 1 },
-    ]),
-    vendor.editTruck
-  );   
-         
-  router.get('/getBookingsByVendorId/:vendorId',vendor.getBookingsByVendorId)
-  router.post('/vendorBookingApproval',upload.none(),vendor.vendorBookingApproval)
-  router.post('/storeFCMTokenToVendor',upload.none(),vendor.storeFCMTokenToVendor)
-  router.post('/vendorCompleteRide',upload.none(),vendor.vendorCompleteRide) 
+router.get("/getVendorTruck/:vendorId", vendor.getVendorTruck);
 
-  router.post('/getVendorBookingsByMonth',upload.none(),vendor.getVendorBookingsByMonth)
-  router.post('/getVendorBookingsByMonthAndWeek',upload.none(),vendor.getVendorBookingsByMonthAndWeek)
-   
-  
+router.post(
+  "/editTruck/:vendorId/:vehicleId",
+  upload.fields([
+    { name: "vehicleImages", maxCount: 5 },
+    { name: "ownerImage", maxCount: 1 },
+    { name: "ownerAdharCard", maxCount: 2 },
+    { name: "ownerDrivingLicense", maxCount: 2 },
+    { name: "vehicleInsurance", maxCount: 2 },
+    { name: "vehicleRC", maxCount: 2 },
+  ]),
+  vendor.editTruck
+);
+
+router.get("/getBookingsByVendorId/:vendorId", vendor.getBookingsByVendorId);
+router.post(
+  "/vendorBookingApproval",
+  upload.none(),
+  vendor.vendorBookingApproval
+);
+router.post(
+  "/storeFCMTokenToVendor",
+  upload.none(),
+  vendor.storeFCMTokenToVendor
+);
+router.post("/vendorCompleteRide", upload.none(), vendor.vendorCompleteRide);
+
+router.post(
+  "/getVendorBookingsByMonth",
+  upload.none(),
+  vendor.getVendorBookingsByMonth
+);
+router.post(
+  "/getVendorBookingsByMonthAndWeek",
+  upload.none(),
+  vendor.getVendorBookingsByMonthAndWeek
+);
+router.post(
+  "/getVendorBookingsByWeek",
+  upload.none(),
+  vendor.getVendorBookingsByWeek
+);
+router.post(
+  "/getVendorBookingsPaymentByCashByWeek",
+  upload.none(),
+  vendor.getVendorBookingsPaymentByCashByWeek
+);
+router.post("/vendorAdvanceRefund", upload.none(), vendor.vendorAdvanceRefund);
+router.post("/VendorStartTrip", upload.none(), vendor.VendorStartTrip);
+router.post("/vendorSendMessage", upload.none(), vendor.vendorSendMessage);
 
 module.exports = router;
- 

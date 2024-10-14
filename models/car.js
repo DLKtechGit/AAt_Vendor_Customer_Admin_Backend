@@ -2,12 +2,12 @@
 const mongoose = require('mongoose')
 
 const carSchema = new mongoose.Schema({
-    ownerImage:{type:String },
-    ownerAdharCard:{type:String , required:true},
-    ownerDrivingLicense:{type:String , required:true},
+    ownerImage:[{type:String }],
+    ownerAdharCard:[{type:String , required:true}],
+    ownerDrivingLicense:[{type:String , required:true}],
     vehicleImages: [{ type: String, required: true }], 
-    vehicleInsurance:{type:String , required:true},
-    vehicleRC:{type:String , required:true},
+    vehicleInsurance:[{type:String , required:true}],
+    vehicleRC:[{type:String , required:true}],
     vehicleMake:{type:String},
     vehicleModel:{type:String},
     licensePlate: { type: String, required: true }, 
@@ -24,6 +24,11 @@ const carSchema = new mongoose.Schema({
     pickupDate : {type:Date},
     returnDate : {type:Date},
     adminCommissionPercentage:{type:Number},
+    tripStartedAt:{type:Date},
+    pricePerDay:{type:String},
+    pricePerKm:{type:String},
+    fuelType:{type:String},
+    vehicleType:{type:String}
 
 })
 

@@ -9,21 +9,30 @@ const bookingSchema = new mongoose.Schema({
     totalKm:{type:String},
     advanceAmount:{type:Number},
     totalFare:{type:Number},
-    remainingPayment:{type:String},
+    remainingPayment:{type:Number},
     vendorApprovedStatus:{type:String,default:"pending"},
     vendorRejectedReason:{type:String},
     paymentMethod:{type:String},
     tripStatus:{type:String},
     tripType:{type:String},
     customerCancelled:{type:Boolean , default:false},
+    vendorCancelled:{type:Boolean, default:false},
     customerCancelledReason:{type:String},
-    // vendordetails:[],
+    advanceRefund:{type:Boolean, default:false},
+    otpForAuto:{type:Number},
     customer:{},
     vehicleDetails:{},
     bookedAt:{type:Date,default: Date.now},
     vendorTotalPayment:{type:Number},
     adminCommissionAmount:{type:Number},
-    completedAt:{type:Date}
+    completedAt:{type:Date},
+    receiversName:{type:String},
+    receiversNumber:{type:String},
+    adminCancelled:{type:Boolean , default:false},
+    adminCancelledReason:{type:String}
+
+
+    
     
 
  

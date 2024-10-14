@@ -1,75 +1,28 @@
 const auth = require("../middleware/auth");
 const vendorModel = require("../models/vendor");
 const nodemailer = require("nodemailer");
-const upload = require('../middleware/uploadMiddleware')
+const upload = require("../middleware/uploadMiddleware");
 const crypto = require("crypto");
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 const bookingModel = require("../models/booking");
 const customerModel = require("../models/customer");
 const adminModel = require("../models/admin");
-
-// const registerVendorWithCar = async (req, res) => {
-//   const { userName, email, password, cars } = req.body;
-
-//   if (!userName || !email || !password || !cars) {
-//     return res.status(400).send({
-//       message: "All fields (userName, email, password, and cars) are required"
-//     });
-//   }
-
-//   try {
-//     let existingVendor = await Vendor.findOne({ email });
-//     if (existingVendor) {
-//       return res.status(409).send({
-//         message: `Vendor with email ${email} already exists`
-//       });
-//     }
-//     const hashedPassword = await auth.hashPassword(password);
-
-//     const newVendor = new Vendor({
-//       userName,
-//       email,
-//       password: hashedPassword,
-//       passengers: {
-//         cars
-//       }
-//     });
-
-//     const savedVendor = await newVendor.save();
-
-//     res.status(201).send({
-//       message: "Vendor created successfully with car details",
-//       vendor: savedVendor
-//     });
-//   } catch (error) {
-//     res.status(500).send({
-//       message: "Internal Server Error",
-//       error: error.message
-//     });
-//   }
-// };
+const {
+  vendorMessage,
+  vendorChat,
+} = require("../models/chatAndMessageForVendor");
 
 const vendorSignup = async (req, res) => {
-  const { userName, email, phoneNumber, address, password, confirmPassword } =
-    req.body;
+  const { userName, email, phoneNumber, password, confirmPassword } = req.body;
 
-  if (
-    !userName ||
-    !email ||
-    !phoneNumber ||
-    !address ||
-    !password ||
-    !confirmPassword
-  ) {
-    return res.status(400).send({ message: "Please fill are required fields" });
+  if (!userName || !email || !phoneNumber || !password || !confirmPassword) {
+    return res.status(400).send({ message: "All fields are required " });
   }
 
   try {
     const user = await vendorModel.findOne({ email });
     if (user) {
-      return res
-        .status(409)
-        .send({ message: `Vendor with email ${email} already exists` });
+      return res.status(409).send({ message: `Vendor email already exists` });
     }
 
     if (password !== confirmPassword) {
@@ -84,7 +37,6 @@ const vendorSignup = async (req, res) => {
       userName,
       email,
       phoneNumber,
-      address,
       password: hashedPassword,
     });
     const savedVendor = await newVendor.save();
@@ -100,37 +52,38 @@ const vendorSignup = async (req, res) => {
   }
 };
 
-const vendorLogin = async(req,res)=>{
-  const {email,password} = req.body
-if(!email || !password){
-  return res.status(400).send({message:"Please fill the all required fields"})
-}
-try {
-  const user = await vendorModel.findOne({email})
-  if(!user){
-    return res.status(404).send({message:`Vendor with ${email} is does not exist`})
+const vendorLogin = async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).send({ message: "All fields are required" });
   }
-  const hashCompare = await auth.hashCompare(password,user.password)
+  try {
+    const user = await vendorModel.findOne({ email });
+    if (!user) {
+      return res.status(404).send({ message: "Vendor email  does not exist" });
+    }
+    const hashCompare = await auth.hashCompare(password, user.password);
 
-  if(hashCompare){
+    if (!hashCompare) {
+      return res.status(401).send({ message: "Incorrect Password" });
+    }
+
     const token = await auth.createToken({
-      _id:user._id,
-      email:user.email,
-      phoneNumber:user.phoneNumber,
-      address:user.address,
-      role:user.role
+      _id: user._id,
+      email: user.email,
+      phoneNumber: user.phoneNumber,
+      address: user.address,
+      role: user.role,
+    });
 
-    })
-
-    res.status(201).send({message:"Vendor Login successfully",token,user})
+    res.status(201).send({ message: "Vendor Login successfully", token, user });
+  } catch (error) {
+    res.status(500).send({
+      message: "Internal Server Error",
+      error: error.message,
+    });
   }
-} catch (error) {
-  res.status(500).send({
-    message: "Internal Server Error",
-    error: error.message,
-  });
-}
-}
+};
 
 const generatePin = () => {
   return Math.floor(1000 + Math.random() * 9000);
@@ -165,9 +118,7 @@ const forgotPassword = async (req, res) => {
   try {
     const user = await vendorModel.findOne({ email });
     if (!user) {
-      return res
-        .status(404)
-        .send({ message: `No account found with email ${email}` });
+      return res.status(404).send({ message: `Email not found` });
     }
 
     const pin = generatePin();
@@ -190,21 +141,21 @@ const forgotPassword = async (req, res) => {
 };
 
 const validatePin = async (req, res) => {
-  const {email, resetPin } = req.body;
+  const { email, resetPin } = req.body;
 
   if (!resetPin || !email) {
-    return res.status(400).send({ message: " Please fill all required fields" });
+    return res.status(400).send({ message: "Please enter the OTP" });
   }
 
   try {
-    const user = await vendorModel.findOne({email});
+    const user = await vendorModel.findOne({ email });
 
     if (!user) {
       return res.status(404).send({ message: `Email is not exist` });
     }
 
-    if(user.resetPin !== resetPin){
-      return res.status(400).send({message:"Invalid Pin"})
+    if (user.resetPin !== resetPin) {
+      return res.status(400).send({ message: "Invalid Pin" });
     }
 
     if (!user.resetPin || !user.pinExpiresAt) {
@@ -231,7 +182,7 @@ const validatePin = async (req, res) => {
     await user.save();
 
     res.status(201).send({
-      message: "PIN verified successfully. You can now reset your password.",
+      message: "OTP verified successfully.",
     });
   } catch (error) {
     res
@@ -241,7 +192,7 @@ const validatePin = async (req, res) => {
 };
 
 const resetPassword = async (req, res) => {
-  const { email,resetPin, newPassword, confirmPassword } = req.body;
+  const { email, resetPin, newPassword, confirmPassword } = req.body;
 
   if (!email || !resetPin || !newPassword || !confirmPassword) {
     return res.status(400).send({ message: "Fill the all required fields" });
@@ -249,20 +200,20 @@ const resetPassword = async (req, res) => {
 
   if (newPassword !== confirmPassword) {
     return res
-      .status(400)
+      .status(404)
       .send({ message: "New password and confirm password do not match" });
   }
 
   try {
     const user = await vendorModel.findOne({ email });
     if (!user) {
-      return res
-        .status(404)
-        .send({ message: "User not found" });
+      return res.status(404).send({ message: "User not found" });
     }
 
-    if(user.resetPin !== resetPin){
-      return res.status(400).send({message:"session expired please regenerate the otp"})
+    if (user.resetPin !== resetPin) {
+      return res
+        .status(400)
+        .send({ message: "session expired please regenerate the otp" });
     }
 
     const hashedPassword = await auth.hashPassword(newPassword);
@@ -272,7 +223,7 @@ const resetPassword = async (req, res) => {
 
     await user.save();
 
-    res.status(200).send({ message: "Password has been reset successfully" });
+    res.status(201).send({ message: "Password has been reset successfully" });
   } catch (error) {
     res
       .status(500)
@@ -316,18 +267,18 @@ const getAllVendors = async (req, res) => {
       .status(500)
       .send({ message: "Internal Server Error", error: error.message });
   }
-};  
+};
 
 const editVendorProfile = async (req, res) => {
-  const { _id, userName, email, phoneNumber, address } = req.body;
+  const { vendorId, userName, email, phoneNumber, address } = req.body;
 
   if (!userName || !email || !phoneNumber || !address) {
     return res.status(400).send({ message: "Fill all required fields" });
   }
   try {
-    const user = await vendorModel.findById({ _id: _id });
+    const user = await vendorModel.findById(vendorId);
     if (!user) {
-      return res.status(400).send({ message: "Vendor not found" });
+      return res.status(404).send({ message: "Vendor not found" });
     }
 
     (user.userName = userName),
@@ -384,15 +335,50 @@ const editPassword = async (req, res) => {
   }
 };
 
-
 const createCar = async (req, res) => {
-  const { vendorId, vehicleMake, vehicleModel, licensePlate, vehicleColor, numberOfSeats, milage } = req.body;
+  const {
+    vendorId,
+    vehicleMake,
+    vehicleModel,
+    licensePlate,
+    vehicleColor,
+    numberOfSeats,
+    vehicleType,
+    milage,
+    pricePerDay,
+    pricePerKm,
+    fuelType,
+  } = req.body;
+
   const files = req.files;
 
-  if (!vendorId || !vehicleMake || !vehicleModel || !licensePlate || !vehicleColor || !numberOfSeats || !milage || !files.ownerAdharCard || !files.ownerAdharCard || !files.ownerDrivingLicense
-    || files.vehicleImages.length!==5|| !files.vehicleInsurance || !files.vehicleRC
-   ) {
-    return res.status(400).send({ message: "All car details and vendorId are required" });
+  // Validate required fields and files
+  if (
+    !vendorId ||
+    !vehicleMake ||
+    !vehicleModel ||
+    !licensePlate ||
+    !vehicleColor ||
+    !numberOfSeats ||
+    !vehicleType ||
+    !milage ||
+    !pricePerDay ||
+    !pricePerKm ||
+    !fuelType ||
+    !files?.ownerAdharCard ||
+    files.ownerAdharCard.length !== 2 ||
+    !files?.ownerImage ||
+    files.ownerImage.length !== 1 ||
+    !files?.ownerDrivingLicense ||
+    files.ownerDrivingLicense.length !== 2 ||
+    !files?.vehicleImages ||
+    files.vehicleImages.length !== 5 ||
+    !files?.vehicleInsurance ||
+    files.vehicleInsurance.length !== 2 ||
+    !files?.vehicleRC ||
+    files.vehicleRC.length !== 2
+  ) {
+    return res.status(400).send({ message: "All car details are required" });
   }
 
   try {
@@ -401,32 +387,46 @@ const createCar = async (req, res) => {
       return res.status(404).send({ message: "Vendor not found" });
     }
 
+    // Store file paths
     const newCar = {
-      ownerAdharCard:`${process.env.baseURL}/${files?.ownerAdharCard[0]?.path}`,
-      ownerImage:`${process.env.baseURL}/${files?.ownerImage[0]?.path}`,
-      ownerDrivingLicense: `${process.env.baseURL}/${files?.ownerDrivingLicense[0]?.path}`,
-      vehicleImages: files?.vehicleImages.map((file)=>`${process.env.baseURL}/${file.path}`),
-      vehicleInsurance: `${process.env.baseURL}/${files?.vehicleInsurance[0]?.path}`,
-      vehicleRC: `${process.env.baseURL}/${files?.vehicleRC[0]?.path}`,
+      ownerImage: files.ownerImage[0]
+        ? `${process.env.baseURL}/${files.ownerImage[0].path}`
+        : "",
+      ownerAdharCard: files.ownerAdharCard.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      ownerDrivingLicense: files.ownerDrivingLicense.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      vehicleImages: files.vehicleImages.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      vehicleInsurance: files.vehicleInsurance.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      vehicleRC: files.vehicleRC.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
       vehicleMake,
       vehicleModel,
       licensePlate,
       vehicleColor,
       numberOfSeats,
-      milage
+      vehicleType,
+      milage,
+      pricePerDay,
+      pricePerKm,
+      fuelType,
     };
-    
 
     vendor.vehicles.cars.push(newCar);
     const savedVendor = await vendor.save();
 
+    // Admin notification
     const adminMessage = {
       title: "New Car Creation Request",
-      description: `A new car has been created by vendor ${vendor.userName} (${vendor.email}).
-
-      Please review the car details and approve it at your earliest convenience.`,
+      description: `A new car has been created by vendor ${vendor.userName} (${vendor.email}). Please review the car details.`,
     };
-
     const admin = await adminModel.findOne();
     if (admin) {
       admin.messages.push(adminMessage);
@@ -435,18 +435,52 @@ const createCar = async (req, res) => {
 
     res.status(201).send({ message: "Car created successfully", savedVendor });
   } catch (error) {
-    res.status(500).send({ message: "Internal Server Error", error: error.message });
+    res
+      .status(500)
+      .send({ message: "Internal Server Error", error: error.message });
   }
 };
 
-
 const recreateCar = async (req, res) => {
-  const { vendorId, vehicleId, vehicleMake, vehicleModel, licensePlate, vehicleColor, numberOfSeats, milage} = req.body;
+  const {
+    vendorId,
+    vehicleId,
+    vehicleMake,
+    vehicleModel,
+    licensePlate,
+    vehicleType,
+    vehicleColor,
+    numberOfSeats,
+    milage,
+    pricePerDay,
+    pricePerKm,
+    fuelType,
+  } = req.body;
   const files = req.files;
 
-  if (!vendorId || !vehicleMake || !vehicleModel || !licensePlate || !vehicleColor || !numberOfSeats || !milage || !files.ownerAdharCard || !files.ownerAdharCard || !files.ownerDrivingLicense
-    || files.vehicleImages.length!==5|| !files.vehicleInsurance || !files.vehicleRC) {
-    return res.status(400).send({ message: "All car details and vendorId are required" });
+  if (
+    !vendorId ||
+    !vehicleId ||
+    !vehicleMake ||
+    !vehicleModel ||
+    !licensePlate ||
+    !vehicleColor ||
+    !numberOfSeats ||
+    !vehicleType ||
+    !milage ||
+    files.ownerAdharCard.length !== 2 ||
+    !files.ownerImage ||
+    files.ownerDrivingLicense.length !== 2 ||
+    files.vehicleImages.length !== 5 ||
+    files.vehicleInsurance.length !== 2 ||
+    files.vehicleRC.length !== 2 ||
+    !pricePerDay ||
+    !pricePerKm ||
+    !fuelType
+  ) {
+    return res
+      .status(400)
+      .send({ message: "All car details and vendorId are required" });
   }
 
   try {
@@ -455,61 +489,86 @@ const recreateCar = async (req, res) => {
       return res.status(404).send({ message: "Vendor not found" });
     }
 
-    const carIndex = vendor.vehicles.cars.find(car => car._id.toString() === vehicleId && car.vehicleApprovedByAdmin === 'rejected');
+    const carIndex = vendor.vehicles.cars.find(
+      (car) =>
+        car._id.toString() === vehicleId &&
+        car.vehicleApprovedByAdmin === "rejected"
+    );
     if (!carIndex) {
       return res.status(404).send({ message: "Car not found or not rejected" });
     }
     vendor.vehicles.cars.splice(carIndex, 1);
 
     const newCar = {
-      ownerAdharCard:`${process.env.baseURL}/${files?.ownerAdharCard[0]?.path}`,
-      ownerImage:`${process.env.baseURL}/${files?.ownerImage[0]?.path}`,
-      ownerDrivingLicense: `${process.env.baseURL}/${files?.ownerDrivingLicense[0]?.path}`,
-      vehicleImages: files?.vehicleImages.map((file)=>`${process.env.baseURL}/${file.path}`),
-      vehicleInsurance: `${process.env.baseURL}/${files?.vehicleInsurance[0]?.path}`,
-      vehicleRC: `${process.env.baseURL}/${files?.vehicleRC[0]?.path}`,
+      ownerImage: `${process.env.baseURL}/${files?.ownerImage[0]?.path}`,
+      ownerAdharCard: files?.ownerAdharCard.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      ownerDrivingLicense: files?.ownerDrivingLicense.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      vehicleImages: files?.vehicleImages.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      vehicleInsurance: files?.vehicleInsurance.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      vehicleRC: files?.vehicleRC.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
       vehicleMake,
       vehicleModel,
       licensePlate,
       vehicleColor,
       numberOfSeats,
       milage,
-      vehicleApprovedByAdmin: 'pending'  
+      vehicleType,
+      vehicleApprovedByAdmin: "pending",
+      pricePerDay,
+      pricePerKm,
+      fuelType,
     };
 
     vendor.vehicles.cars.push(newCar);
     const savedVendor = await vendor.save();
 
-    res.status(201).send({ message: "Car recreated successfully with pending status", savedVendor });
+    res.status(201).send({
+      message: "Car recreated successfully with pending status",
+      savedVendor,
+    });
   } catch (error) {
-    res.status(500).send({ message: "Internal Server Error", error: error.message });
+    res
+      .status(500)
+      .send({ message: "Internal Server Error", error: error.message });
   }
 };
 
 const getAllVehiclesByVendor = async (req, res) => {
   try {
-    const {vendorId} = req.params;
-  
+    const { vendorId } = req.params;
+
     const vendor = await vendorModel.findById(vendorId);
     if (!vendor) {
-      return res.status(404).send({ message: 'Vendor not found' });
+      return res.status(404).send({ message: "Vendor not found" });
     }
-                
+
     const allVehicles = [
       ...vendor.vehicles.cars,
       ...vendor.vehicles.vans,
       ...vendor.vehicles.buses,
       ...vendor.vehicles.autos,
       ...vendor.vehicles.lorries,
-      ...vendor.vehicles.trucks
+      ...vendor.vehicles.trucks,
     ];
 
     res.status(200).send({
-      message: 'All vehicles fetched successfully',
-      vehicles: allVehicles
+      message: "All vehicles fetched successfully",
+      vehicles: allVehicles,
     });
   } catch (error) {
-    res.status(500).send({ message: 'Internal Server Error', error: error.message });
+    res
+      .status(500)
+      .send({ message: "Internal Server Error", error: error.message });
   }
 };
 
@@ -522,113 +581,146 @@ const getVendorCars = async (req, res) => {
       return res.status(404).send({ message: "Vendor not found" });
     }
 
-    if (!vendor.vehicles || !vendor.vehicles.cars || vendor.vehicles.cars.length === 0) {
-      return res.status(404).send({ message: "No cars available for the vendor" });
+    if (
+      !vendor.vehicles ||
+      !vendor.vehicles.cars ||
+      vendor.vehicles.cars.length === 0
+    ) {
+      return res
+        .status(404)
+        .send({ message: "No cars available for the vendor" });
     }
 
-    const cars = vendor.vehicles.cars
-    
-    res.status(200).send({ message: "Approved cars retrieved successfully", cars });
+    const cars = vendor.vehicles.cars;
 
+    res
+      .status(200)
+      .send({ message: "Approved cars retrieved successfully", cars });
   } catch (error) {
-    res.status(500).send({ message: "Internal Server Error", error: error.message });
+    res
+      .status(500)
+      .send({ message: "Internal Server Error", error: error.message });
   }
 };
 
-const editCar = async(req,res)=>{
-  const {vendorId , vehicleId} = req.params
-const updatedData = req.body
-const files = req.files
-if (!vendorId || !vehicleId) {
-  return res.status(400).send({ message: "VendorId and VehicleId are required" });
-}
-
-try {
-  const vendor = await vendorModel.findById(vendorId)
-  if(!vendor){
-    return res.status(404).send({message:"Vendot not found "})
-  }
-
-  const carToUpdate = vendor.vehicles.cars.find(car => car._id.toString() === vehicleId);
-
-  if(!carToUpdate){
-    return res.status(404).send({message:"Car not found"})
-  }
-
-  if(files){
-carToUpdate.ownerAdharCard = files?.ownerAdharCard ?`${process.env.baseURL}/${files.ownerAdharCard[0]?.path}` : carToUpdate.ownerAdharCard
-carToUpdate.ownerImage = files?.ownerImage?`${process.env.baseURL}/${files?.ownerImage[0]?.path}`:carToUpdate.ownerImage
-carToUpdate.ownerDrivingLicense = files?.ownerDrivingLicense ? `${process.env.baseURL}/${files.ownerDrivingLicense[0]?.path}` : carToUpdate.ownerDrivingLicense;
-carToUpdate.vehicleImages = files?.vehicleImages ? files.vehicleImages.map(file => `${process.env.baseURL}/${file.path}`) : carToUpdate.vehicleImages;
-carToUpdate.vehicleInsurance = files?.vehicleInsurance ? `${process.env.baseURL}/${files.vehicleInsurance[0]?.path}` : carToUpdate.vehicleInsurance;
-carToUpdate.vehicleRC = files?.vehicleRC ? `${process.env.baseURL}/${files.vehicleRC[0]?.path}` : carToUpdate.vehicleRC;  
-}
-
-carToUpdate.vehicleMake = updatedData.vehicleMake || carToUpdate.vehicleMake;
-carToUpdate.vehicleModel = updatedData.vehicleModel || carToUpdate.vehicleModel;
-carToUpdate.licensePlate = updatedData.licensePlate || carToUpdate.licensePlate;
-carToUpdate.vehicleColor = updatedData.vehicleColor || carToUpdate.vehicleColor;
-carToUpdate.numberOfSeats = updatedData.numberOfSeats || carToUpdate.numberOfSeats;
-carToUpdate.milage = updatedData.milage || carToUpdate.milage;
-
-const updatedcar = await vendor.save()
-
-res.status(200).send({message:"Car updated successfully",updatedcar})
-
-} catch (error) {
-  res.status(500).send({ message: "Internal Server Error", error: error.message });
-
-}
-
-}
-
-
-const createAuto = async(req,res)=>{
-  const { vendorId, vehicleModel, licensePlate, numberOfSeats,} = req.body;
-  const files = req.files
-
-  if(!vendorId || !vehicleModel || !licensePlate || !numberOfSeats || !files.ownerAdharCard || !files.ownerAdharCard || !files.ownerDrivingLicense
-    || files.vehicleImages.length!==5|| !files.vehicleInsurance || !files.vehicleRC){
-    return res.status(400).send({message:"All auto details  are required"})
+const editCar = async (req, res) => {
+  const { vendorId, vehicleId } = req.params;
+  const updatedData = req.body;
+  const files = req.files;
+  if (!vendorId || !vehicleId) {
+    return res
+      .status(400)
+      .send({ message: "VendorId and VehicleId are required" });
   }
 
   try {
-    const vendor = await vendorModel.findById(vendorId)
-    if(!vendor){
-      return res.status(404).send({message:"Vendor not found"})
+    const vendor = await vendorModel.findById(vendorId);
+    if (!vendor) {
+      return res.status(404).send({ message: "Vendot not found " });
     }
 
-    const newAuto = {
-      ownerImage:`${process.env.baseURL}/${files?.ownerImage[0]?.path}`,
-      ownerAdharCard:`${process.env.baseURL}/${files?.ownerAdharCard[0]?.path}`,
-      ownerDrivingLicense: `${process.env.baseURL}/${files?.ownerDrivingLicense[0]?.path}`,
-      vehicleImages: files?.vehicleImages.map((file)=>`${process.env.baseURL}/${file.path}`),
-      vehicleInsurance: `${process.env.baseURL}/${files?.vehicleInsurance[0]?.path}`,
-      vehicleRC: `${process.env.baseURL}/${files?.vehicleRC[0]?.path}`,
-      vehicleModel, 
-      licensePlate, 
-      numberOfSeats,
+    const carToUpdate = vendor.vehicles.cars.find(
+      (car) => car._id.toString() === vehicleId
+    );
+
+    if (!carToUpdate) {
+      return res.status(404).send({ message: "Car not found" });
     }
 
-    vendor.vehicles.autos.push(newAuto)
-    const autoData = await vendor.save()
+    if (files) {
+      carToUpdate.ownerAdharCard = files?.ownerAdharCard
+        ? files.ownerAdharCard.map(
+            (file) => `${process.env.baseURL}/${file.path}`
+          )
+        : carToUpdate.ownerAdharCard;
 
-    res.status(201).send({message:"Auto created successfully",autoData})
+      carToUpdate.ownerImage = files?.ownerImage
+        ? `${process.env.baseURL}/${files?.ownerImage[0]?.path}`
+        : carToUpdate.ownerImage;
+
+      carToUpdate.ownerDrivingLicense = files?.ownerDrivingLicense
+        ? files.ownerDrivingLicense.map(
+            (file) => `${process.env.baseURL}/${file.path}`
+          )
+        : carToUpdate.ownerDrivingLicense;
+
+      carToUpdate.vehicleImages = files?.vehicleImages
+        ? files.vehicleImages.map(
+            (file) => `${process.env.baseURL}/${file.path}`
+          )
+        : carToUpdate.vehicleImages;
+
+      carToUpdate.vehicleInsurance = files?.vehicleInsurance
+        ? files.vehicleInsurance.map(
+            (file) => `${process.env.baseURL}/${file.path}`
+          )
+        : carToUpdate.vehicleInsurance;
+
+      carToUpdate.vehicleRC = files?.vehicleRC
+        ? files.vehicleRC.map((file) => `${process.env.baseURL}/${file.path}`)
+        : carToUpdate.vehicleRC;
+    }
+
+    carToUpdate.vehicleMake =
+      updatedData.vehicleMake || carToUpdate.vehicleMake;
+    carToUpdate.vehicleModel =
+      updatedData.vehicleModel || carToUpdate.vehicleModel;
+    carToUpdate.licensePlate =
+      updatedData.licensePlate || carToUpdate.licensePlate;
+    carToUpdate.vehicleColor =
+      updatedData.vehicleColor || carToUpdate.vehicleColor;
+    carToUpdate.numberOfSeats =
+      updatedData.numberOfSeats || carToUpdate.numberOfSeats;
+    carToUpdate.milage = updatedData.milage || carToUpdate.milage;
+    carToUpdate.pricePerDay =
+      updatedData.pricePerDay || carToUpdate.pricePerDay;
+    carToUpdate.pricePerKm = updatedData.pricePerKm || carToUpdate.pricePerKm;
+    carToUpdate.fuelType = updatedData.fuelType || carToUpdate.fuelType;
+    carToUpdate.vehicleType =
+      updatedData.vehicleType || carToUpdate.vehicleType;
+
+    const updatedcar = await vendor.save();
+
+    res.status(200).send({ message: "Car updated successfully", updatedcar });
   } catch (error) {
-
-    res.status(500).send({ message: "Internal Server Error", error: error.message });
-
+    res
+      .status(500)
+      .send({ message: "Internal Server Error", error: error.message });
   }
+};
 
-}
-
-const recreateAuto = async (req, res) => {
-  const { vendorId,vehicleId, vehicleModel, licensePlate, numberOfSeats,} = req.body;
+const createAuto = async (req, res) => {
+  const {
+    vendorId,
+    vehicleModel,
+    licensePlate,
+    pricePerDay,
+    pricePerKm,
+    fuelType,
+  } = req.body;
   const files = req.files;
 
-  if(!vendorId || !vehicleId || !vehicleModel || !licensePlate || !numberOfSeats || !files.ownerAdharCard || !files.ownerAdharCard || !files.ownerDrivingLicense
-    || files.vehicleImages.length!==5|| !files.vehicleInsurance || !files.vehicleRC){
-    return res.status(400).send({message:"All car details  are required"})
+  if (
+    !vendorId ||
+    !vehicleModel ||
+    !licensePlate ||
+    !files?.ownerAdharCard ||
+    files.ownerAdharCard.length !== 2 ||
+    !files?.ownerImage ||
+    files.ownerImage.length !== 1 ||
+    !files?.ownerDrivingLicense ||
+    files.ownerDrivingLicense.length !== 2 ||
+    !files?.vehicleImages ||
+    files.vehicleImages.length !== 5 ||
+    !files?.vehicleInsurance ||
+    files.vehicleInsurance.length !== 2 ||
+    !files?.vehicleRC ||
+    files.vehicleRC.length !== 2 ||
+    !pricePerDay ||
+    !pricePerKm ||
+    !fuelType
+  ) {
+    return res.status(400).send({ message: "All auto details  are required" });
   }
 
   try {
@@ -637,31 +729,127 @@ const recreateAuto = async (req, res) => {
       return res.status(404).send({ message: "Vendor not found" });
     }
 
-    const autoIndex = vendor.vehicles.autos.find(car => car._id.toString() === vehicleId && car.vehicleApprovedByAdmin === 'rejected');
+    const newAuto = {
+      ownerImage: files.ownerImage[0]
+        ? `${process.env.baseURL}/${files.ownerImage[0].path}`
+        : "",
+      ownerAdharCard: files?.ownerAdharCard.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      ownerDrivingLicense: files?.ownerDrivingLicense.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      vehicleImages: files?.vehicleImages.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      vehicleInsurance: files?.vehicleInsurance.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      vehicleRC: files?.vehicleRC.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      vehicleModel,
+      licensePlate,
+      pricePerDay,
+      pricePerKm,
+      fuelType,
+    };
+
+    vendor.vehicles.autos.push(newAuto);
+    const autoData = await vendor.save();
+
+    res.status(201).send({ message: "Auto created successfully", autoData });
+  } catch (error) {
+    res
+      .status(500)
+      .send({ message: "Internal Server Error", error: error.message });
+  }
+};
+
+const recreateAuto = async (req, res) => {
+  const {
+    vendorId,
+    vehicleId,
+    vehicleModel,
+    licensePlate,
+    pricePerDay,
+    pricePerKm,
+    fuelType,
+  } = req.body;
+  const files = req.files;
+
+  if (
+    !vendorId ||
+    !vehicleId ||
+    !vehicleModel ||
+    !licensePlate ||
+    files.ownerAdharCard.length !== 2 ||
+    !files.ownerImage ||
+    files.ownerDrivingLicense.length !== 2 ||
+    files.vehicleImages.length !== 5 ||
+    files.vehicleInsurance.length !== 2 ||
+    files.vehicleRC.length !== 2 ||
+    !pricePerDay ||
+    !pricePerKm ||
+    !fuelType
+  ) {
+    return res.status(400).send({ message: "All auto details  are required" });
+  }
+
+  try {
+    const vendor = await vendorModel.findById(vendorId);
+    if (!vendor) {
+      return res.status(404).send({ message: "Vendor not found" });
+    }
+
+    const autoIndex = vendor.vehicles.autos.find(
+      (car) =>
+        car._id.toString() === vehicleId &&
+        car.vehicleApprovedByAdmin === "rejected"
+    );
     if (!autoIndex) {
-      return res.status(404).send({ message: "Car not found or not rejected" });
+      return res
+        .status(404)
+        .send({ message: "Auto not found or not rejected" });
     }
     vendor.vehicles.autos.splice(autoIndex, 1);
 
     const newAuto = {
-      ownerImage:`${process.env.baseURL}/${files?.ownerImage[0]?.path}`,
-      ownerAdharCard:`${process.env.baseURL}/${files?.ownerAdharCard[0]?.path}`,
-      ownerDrivingLicense: `${process.env.baseURL}/${files?.ownerDrivingLicense[0]?.path}`,
-      vehicleImages: files?.vehicleImages.map((file)=>`${process.env.baseURL}/${file.path}`),
-      vehicleInsurance: `${process.env.baseURL}/${files?.vehicleInsurance[0]?.path}`,
-      vehicleRC: `${process.env.baseURL}/${files?.vehicleRC[0]?.path}`,
-      vehicleModel, 
-      licensePlate, 
-      numberOfSeats,
-      vehicleApprovedByAdmin: 'pending'  
+      ownerImage: `${process.env.baseURL}/${files?.ownerImage[0]?.path}`,
+      ownerAdharCard: files?.ownerAdharCard.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      ownerDrivingLicense: files?.ownerDrivingLicense.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      vehicleImages: files?.vehicleImages.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      vehicleInsurance: files?.vehicleInsurance.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      vehicleRC: files?.vehicleRC.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      vehicleModel,
+      licensePlate,
+      vehicleApprovedByAdmin: "pending",
+      pricePerDay,
+      pricePerKm,
+      fuelType,
     };
 
     vendor.vehicles.autos.push(newAuto);
     const savedVendor = await vendor.save();
 
-    res.status(201).send({ message: "Car recreated successfully with pending status", savedVendor });
+    res.status(201).send({
+      message: "Auto recreated successfully with pending status",
+      savedVendor,
+    });
   } catch (error) {
-    res.status(500).send({ message: "Internal Server Error", error: error.message });
+    res
+      .status(500)
+      .send({ message: "Internal Server Error", error: error.message });
   }
 };
 
@@ -674,26 +862,35 @@ const getVendorAuots = async (req, res) => {
       return res.status(404).send({ message: "Vendor not found" });
     }
 
-    if (!vendor.vehicles || !vendor.vehicles.autos || vendor.vehicles.autos.length === 0) {
-      return res.status(404).send({ message: "No autos available for the vendor" });
+    if (
+      !vendor.vehicles ||
+      !vendor.vehicles.autos ||
+      vendor.vehicles.autos.length === 0
+    ) {
+      return res
+        .status(404)
+        .send({ message: "No autos available for the vendor" });
     }
 
-    const autos = vendor.vehicles.autos
-   
-    res.status(200).send({ message: " autos retrieved successfully", autos });
+    const autos = vendor.vehicles.autos;
 
+    res.status(200).send({ message: " autos retrieved successfully", autos });
   } catch (error) {
-    res.status(500).send({ message: "Internal Server Error", error: error.message });
+    res
+      .status(500)
+      .send({ message: "Internal Server Error", error: error.message });
   }
 };
 
 const editAuto = async (req, res) => {
   const { vendorId, vehicleId } = req.params;
-  const updatedData = req.body; 
+  const updatedData = req.body;
   const files = req.files;
 
   if (!vendorId || !vehicleId) {
-    return res.status(400).send({ message: "VendorID and vehicleID are required" });
+    return res
+      .status(400)
+      .send({ message: "VendorID and vehicleID are required" });
   }
 
   try {
@@ -702,81 +899,195 @@ const editAuto = async (req, res) => {
       return res.status(404).send({ message: "Vendor not found" });
     }
 
-    const autoToUpdate = vendor.vehicles.autos.find(auto => auto._id.toString() === vehicleId);
+    const autoToUpdate = vendor.vehicles.autos.find(
+      (auto) => auto._id.toString() === vehicleId
+    );
     if (!autoToUpdate) {
       return res.status(404).send({ message: "Auto not found" });
     }
 
     if (files) {
-      autoToUpdate.ownerAdharCard = files?.ownerAdharCard ? `${process.env.baseURL}/${files.ownerAdharCard[0]?.path}` : autoToUpdate.ownerAdharCard;
-      autoToUpdate.ownerImage = files?.ownerImage ? `${process.env.baseURL}/${files.ownerImage[0]?.path}` : autoToUpdate.ownerImage;
-      autoToUpdate.ownerDrivingLicense = files?.ownerDrivingLicense ? `${process.env.baseURL}/${files.ownerDrivingLicense[0]?.path}` : autoToUpdate.ownerDrivingLicense;
-      autoToUpdate.vehicleImages = files?.vehicleImages ? files.vehicleImages.map(file => `${process.env.baseURL}/${file.path}`) : autoToUpdate.vehicleImages;
-      autoToUpdate.vehicleInsurance = files?.vehicleInsurance ? `${process.env.baseURL}/${files.vehicleInsurance[0]?.path}` : autoToUpdate.vehicleInsurance;
-      autoToUpdate.vehicleRC = files?.vehicleRC ? `${process.env.baseURL}/${files.vehicleRC[0]?.path}` : autoToUpdate.vehicleRC;
+      autoToUpdate.ownerAdharCard = files?.ownerAdharCard
+        ? files.ownerAdharCard.map(
+            (file) => `${process.env.baseURL}/${file.path}`
+          )
+        : autoToUpdate.ownerAdharCard;
+
+      autoToUpdate.ownerImage = files?.ownerImage
+        ? `${process.env.baseURL}/${files?.ownerImage[0]?.path}`
+        : autoToUpdate.ownerImage;
+
+      autoToUpdate.ownerDrivingLicense = files?.ownerDrivingLicense
+        ? files.ownerDrivingLicense.map(
+            (file) => `${process.env.baseURL}/${file.path}`
+          )
+        : autoToUpdate.ownerDrivingLicense;
+
+      autoToUpdate.vehicleImages = files?.vehicleImages
+        ? files.vehicleImages.map(
+            (file) => `${process.env.baseURL}/${file.path}`
+          )
+        : autoToUpdate.vehicleImages;
+
+      autoToUpdate.vehicleInsurance = files?.vehicleInsurance
+        ? files.vehicleInsurance.map(
+            (file) => `${process.env.baseURL}/${file.path}`
+          )
+        : autoToUpdate.vehicleInsurance;
+
+      autoToUpdate.vehicleRC = files?.vehicleRC
+        ? files.vehicleRC.map((file) => `${process.env.baseURL}/${file.path}`)
+        : autoToUpdate.vehicleRC;
     }
 
-    autoToUpdate.vehicleModel = updatedData.vehicleModel || autoToUpdate.vehicleModel;
-    autoToUpdate.numberOfSeats = updatedData.numberOfSeats || autoToUpdate.numberOfSeats;
-    autoToUpdate.licensePlate = updatedData.licensePlate || autoToUpdate.licensePlate;
+    autoToUpdate.vehicleModel =
+      updatedData.vehicleModel || autoToUpdate.vehicleModel;
+    autoToUpdate.licensePlate =
+      updatedData.licensePlate || autoToUpdate.licensePlate;
+    autoToUpdate.pricePerDay =
+      updatedData.pricePerDay || autoToUpdate.pricePerDay;
+    autoToUpdate.pricePerKm = updatedData.pricePerKm || autoToUpdate.pricePerKm;
+    autoToUpdate.fuelType = updatedData.fuelType || autoToUpdate.fuelType;
 
     await vendor.save();
 
-    res.status(201).send({ message: "Auto updated successfully", auto: autoToUpdate });
+    res
+      .status(201)
+      .send({ message: "Auto updated successfully", auto: autoToUpdate });
   } catch (error) {
-    res.status(500).send({ message: "Internal Server Error", error: error.message });
+    res
+      .status(500)
+      .send({ message: "Internal Server Error", error: error.message });
   }
 };
 
-
-const createVan = async(req,res)=>{
-  const { vendorId, vehicleMake, vehicleModel, licensePlate, vehicleColor, numberOfSeats, milage,} = req.body;
+const createVan = async (req, res) => {
+  const {
+    vendorId,
+    vehicleMake,
+    vehicleModel,
+    licensePlate,
+    vehicleColor,
+    numberOfSeats,
+    milage,
+    pricePerDay,
+    pricePerKm,
+    fuelType,
+  } = req.body;
   const files = req.files;
 
-  if (!vendorId || !vehicleMake || !vehicleModel || !licensePlate || !vehicleColor || !numberOfSeats || !milage || !files.ownerAdharCard || !files.ownerAdharCard || !files.ownerDrivingLicense
-    || files.vehicleImages.length!==5|| !files.vehicleInsurance || !files.vehicleRC) {
-    return res.status(400).send({ message: "All van details and vendorId are required" });
+  if (
+    !vendorId ||
+    !vehicleMake ||
+    !vehicleModel ||
+    !licensePlate ||
+    !vehicleColor ||
+    !numberOfSeats ||
+    !milage ||
+    !files?.ownerAdharCard ||
+    files.ownerAdharCard.length !== 2 ||
+    !files?.ownerImage ||
+    files.ownerImage.length !== 1 ||
+    !files?.ownerDrivingLicense ||
+    files.ownerDrivingLicense.length !== 2 ||
+    !files?.vehicleImages ||
+    files.vehicleImages.length !== 5 ||
+    !files?.vehicleInsurance ||
+    files.vehicleInsurance.length !== 2 ||
+    !files?.vehicleRC ||
+    files.vehicleRC.length !== 2 ||
+    !pricePerDay ||
+    !pricePerKm ||
+    !fuelType
+  ) {
+    return res
+      .status(400)
+      .send({ message: "All van details and vendorId are required" });
   }
- 
+
   try {
     const vendor = await vendorModel.findById(vendorId);
     if (!vendor) {
       return res.status(404).send({ message: "Vendor not found" });
     }
 
-  
     const newVan = {
-      ownerAdharCard:`${process.env.baseURL}/${files?.ownerAdharCard[0]?.path}`,
-      ownerImage:`${process.env.baseURL}/${files?.ownerImage[0]?.path}`,
-      ownerDrivingLicense: `${process.env.baseURL}/${files?.ownerDrivingLicense[0]?.path}`,
-      vehicleImages: files?.vehicleImages.map((file)=>`${process.env.baseURL}/${file.path}`),
-      vehicleInsurance: `${process.env.baseURL}/${files?.vehicleInsurance[0]?.path}`,
-      vehicleRC: `${process.env.baseURL}/${files?.vehicleRC[0]?.path}`,
+      ownerImage: files.ownerImage[0]
+        ? `${process.env.baseURL}/${files.ownerImage[0].path}`
+        : "",
+      ownerAdharCard: files?.ownerAdharCard.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      ownerDrivingLicense: files?.ownerDrivingLicense.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      vehicleImages: files?.vehicleImages.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      vehicleInsurance: files?.vehicleInsurance.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      vehicleRC: files?.vehicleRC.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
       vehicleMake,
       vehicleModel,
       licensePlate,
       vehicleColor,
-      numberOfSeats, 
+      numberOfSeats,
       milage,
-      
-  
+      pricePerDay,
+      pricePerKm,
+      fuelType,
     };
 
     vendor.vehicles.vans.push(newVan);
     const savedVendor = await vendor.save();
     res.status(201).send({ message: "Van created successfully", savedVendor });
   } catch (error) {
-    res.status(500).send({ message: "Internal Server Error", error: error.message });
+    res
+      .status(500)
+      .send({ message: "Internal Server Error", error: error.message });
   }
 };
 
 const recreateVan = async (req, res) => {
-  const { vendorId, vehicleId, vehicleMake, vehicleModel, licensePlate, vehicleColor, numberOfSeats, milage} = req.body;
+  const {
+    vendorId,
+    vehicleId,
+    vehicleMake,
+    vehicleModel,
+    licensePlate,
+    vehicleColor,
+    numberOfSeats,
+    milage,
+    pricePerDay,
+    pricePerKm,
+    fuelType,
+  } = req.body;
   const files = req.files;
 
-  if (!vendorId || !vehicleMake || !vehicleModel || !licensePlate || !vehicleColor || !numberOfSeats || !milage || !files.ownerAdharCard || !files.ownerAdharCard || !files.ownerDrivingLicense
-    || files.vehicleImages.length!==5|| !files.vehicleInsurance || !files.vehicleRC) {
-    return res.status(400).send({ message: "All van details and vendorId are required" });
+  if (
+    !vendorId ||
+    !vehicleMake ||
+    !vehicleModel ||
+    !licensePlate ||
+    !vehicleColor ||
+    !numberOfSeats ||
+    !milage ||
+    files.ownerAdharCard.length !== 2 ||
+    !files.ownerImage ||
+    files.ownerDrivingLicense.length !== 2 ||
+    files.vehicleImages.length !== 5 ||
+    files.vehicleInsurance.length !== 2 ||
+    files.vehicleRC.length !== 2 ||
+    !pricePerDay ||
+    !pricePerKm ||
+    !fuelType
+  ) {
+    return res
+      .status(400)
+      .send({ message: "All van details and vendorId are required" });
   }
 
   try {
@@ -785,68 +1096,97 @@ const recreateVan = async (req, res) => {
       return res.status(404).send({ message: "Vendor not found" });
     }
 
-    const vanIndex = vendor.vehicles.vans.find(van => van._id.toString() === vehicleId && van.vehicleApprovedByAdmin === 'rejected');
+    const vanIndex = vendor.vehicles.vans.find(
+      (van) =>
+        van._id.toString() === vehicleId &&
+        van.vehicleApprovedByAdmin === "rejected"
+    );
     if (!vanIndex) {
       return res.status(404).send({ message: "van not found or not rejected" });
     }
     vendor.vehicles.vans.splice(vanIndex, 1);
 
     const newVan = {
-      ownerAdharCard:`${process.env.baseURL}/${files?.ownerAdharCard[0]?.path}`,
-      ownerImage:`${process.env.baseURL}/${files?.ownerImage[0]?.path}`,
-      ownerDrivingLicense: `${process.env.baseURL}/${files?.ownerDrivingLicense[0]?.path}`,
-      vehicleImages: files?.vehicleImages.map((file)=>`${process.env.baseURL}/${file.path}`),
-      vehicleInsurance: `${process.env.baseURL}/${files?.vehicleInsurance[0]?.path}`,
-      vehicleRC: `${process.env.baseURL}/${files?.vehicleRC[0]?.path}`,
+      ownerImage: `${process.env.baseURL}/${files?.ownerImage[0]?.path}`,
+      ownerAdharCard: files?.ownerAdharCard.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      ownerDrivingLicense: files?.ownerDrivingLicense.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      vehicleImages: files?.vehicleImages.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      vehicleInsurance: files?.vehicleInsurance.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      vehicleRC: files?.vehicleRC.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
       vehicleMake,
       vehicleModel,
       licensePlate,
       vehicleColor,
       numberOfSeats,
       milage,
-      vehicleApprovedByAdmin: 'pending'  
+      vehicleApprovedByAdmin: "pending",
+      pricePerDay,
+      pricePerKm,
+      fuelType,
     };
 
     vendor.vehicles.vans.push(newVan);
     const savedVendor = await vendor.save();
 
-    res.status(201).send({ message: "Car recreated successfully with pending status", savedVendor });
+    res.status(201).send({
+      message: "Car recreated successfully with pending status",
+      savedVendor,
+    });
   } catch (error) {
-    res.status(500).send({ message: "Internal Server Error", error: error.message });
+    res
+      .status(500)
+      .send({ message: "Internal Server Error", error: error.message });
   }
 };
 
-const getVendorVans = async(req,res)=>{
+const getVendorVans = async (req, res) => {
   try {
-    const {vendorId} = req.params
+    const { vendorId } = req.params;
 
-    const vendor = await vendorModel.findById(vendorId)
-    if(!vendor){
-      return res.status(404).send({message:"vendor not found"})
+    const vendor = await vendorModel.findById(vendorId);
+    if (!vendor) {
+      return res.status(404).send({ message: "vendor not found" });
     }
 
-    if (!vendor.vehicles || !vendor.vehicles.vans || vendor.vehicles.vans.length === 0) {
-      return res.status(404).send({ message: "No vans available for the vendor" });
+    if (
+      !vendor.vehicles ||
+      !vendor.vehicles.vans ||
+      vendor.vehicles.vans.length === 0
+    ) {
+      return res
+        .status(404)
+        .send({ message: "No vans available for the vendor" });
     }
 
-    const vanData = vendor.vehicles.vans
+    const vanData = vendor.vehicles.vans;
 
-    res.status(200).send({message:"Vans fetched successfully",vanData})
-
-
+    res.status(200).send({ message: "Vans fetched successfully", vanData });
   } catch (error) {
-    res.status(500).send({ message: "Internal Server Error", error: error.message });
-
+    res
+      .status(500)
+      .send({ message: "Internal Server Error", error: error.message });
   }
-}
+};
 
 const editVan = async (req, res) => {
   const { vendorId, vehicleId } = req.params;
-  const updatedData = req.body; 
+  const updatedData = req.body;
   const files = req.files;
 
   if (!vendorId || !vehicleId) {
-    return res.status(400).send({ message: "VendorID and vehicleID are required" });
+    return res
+      .status(400)
+      .send({ message: "VendorID and vehicleID are required" });
   }
 
   try {
@@ -855,44 +1195,113 @@ const editVan = async (req, res) => {
       return res.status(404).send({ message: "Vendor not found" });
     }
 
-    const vanToUpdate = vendor.vehicles.vans.find(van => van._id.toString() === vehicleId);
+    const vanToUpdate = vendor.vehicles.vans.find(
+      (van) => van._id.toString() === vehicleId
+    );
     if (!vanToUpdate) {
       return res.status(404).send({ message: "van not found" });
     }
 
     if (files) {
-      vanToUpdate.ownerAdharCard = files?.ownerAdharCard ? `${process.env.baseURL}/${files.ownerAdharCard[0]?.path}` : vanToUpdate.ownerAdharCard;
-      vanToUpdate.ownerImage = files?.ownerImage ? `${process.env.baseURL}/${files.ownerImage[0]?.path}` : vanToUpdate.ownerImage;
-      vanToUpdate.ownerDrivingLicense = files?.ownerDrivingLicense ? `${process.env.baseURL}/${files.ownerDrivingLicense[0]?.path}` : vanToUpdate.ownerDrivingLicense;
-      vanToUpdate.vehicleImages = files?.vehicleImages ? files.vehicleImages.map(file => `${process.env.baseURL}/${file.path}`) : vanToUpdate.vehicleImages;
-      vanToUpdate.vehicleInsurance = files?.vehicleInsurance ? `${process.env.baseURL}/${files.vehicleInsurance[0]?.path}` : vanToUpdate.vehicleInsurance;
-      vanToUpdate.vehicleRC = files?.vehicleRC ? `${process.env.baseURL}/${files.vehicleRC[0]?.path}` : vanToUpdate.vehicleRC;
+      vanToUpdate.ownerAdharCard = files?.ownerAdharCard
+        ? files.ownerAdharCard.map(
+            (file) => `${process.env.baseURL}/${file.path}`
+          )
+        : vanToUpdate.ownerAdharCard;
+
+      vanToUpdate.ownerImage = files?.ownerImage
+        ? `${process.env.baseURL}/${files.ownerImage[0]?.path}`
+        : vanToUpdate.ownerImage;
+
+      vanToUpdate.ownerDrivingLicense = files?.ownerDrivingLicense
+        ? files.ownerDrivingLicense.map(
+            (file) => `${process.env.baseURL}/${file.path}`
+          )
+        : vanToUpdate.ownerDrivingLicense;
+
+      vanToUpdate.vehicleImages = files?.vehicleImages
+        ? files.vehicleImages.map(
+            (file) => `${process.env.baseURL}/${file.path}`
+          )
+        : vanToUpdate.vehicleImages;
+
+      vanToUpdate.vehicleInsurance = files?.vehicleInsurance
+        ? files.vehicleInsurance.map(
+            (file) => `${process.env.baseURL}/${file.path}`
+          )
+        : vanToUpdate.vehicleInsurance;
+
+      vanToUpdate.vehicleRC = files?.vehicleRC
+        ? files.vehicleRC.map((file) => `${process.env.baseURL}/${file.path}`)
+        : vanToUpdate.vehicleRC;
     }
 
-    vanToUpdate.vehicleModel = updatedData.vehicleModel || vanToUpdate.vehicleModel;
-    vanToUpdate.numberOfSeats = updatedData.numberOfSeats || vanToUpdate.numberOfSeats;
-    vanToUpdate.licensePlate = updatedData.licensePlate || vanToUpdate.licensePlate;
-    vanToUpdate.vehicleMake = updatedData.vehicleMake || vanToUpdate.vehicleMake;
-    vanToUpdate.vehicleColor = updatedData.vehicleColor || vanToUpdate.vehicleColor;
+    vanToUpdate.vehicleModel =
+      updatedData.vehicleModel || vanToUpdate.vehicleModel;
+    vanToUpdate.numberOfSeats =
+      updatedData.numberOfSeats || vanToUpdate.numberOfSeats;
+    vanToUpdate.licensePlate =
+      updatedData.licensePlate || vanToUpdate.licensePlate;
+    vanToUpdate.vehicleMake =
+      updatedData.vehicleMake || vanToUpdate.vehicleMake;
+    vanToUpdate.vehicleColor =
+      updatedData.vehicleColor || vanToUpdate.vehicleColor;
     vanToUpdate.milage = updatedData.milage || vanToUpdate.milage;
+    vanToUpdate.pricePerDay =
+      updatedData.pricePerDay || vanToUpdate.pricePerDay;
+    vanToUpdate.pricePerKm = updatedData.pricePerKm || vanToUpdate.pricePerKm;
+    vanToUpdate.fuelType = updatedData.fuelType || vanToUpdate.fuelType;
 
     await vendor.save();
 
-    res.status(201).send({ message: "Auto updated successfully", auto: vanToUpdate });
+    res
+      .status(201)
+      .send({ message: "Auto updated successfully", auto: vanToUpdate });
   } catch (error) {
-    res.status(500).send({ message: "Internal Server Error", error: error.message });
+    res
+      .status(500)
+      .send({ message: "Internal Server Error", error: error.message });
   }
 };
 
-
 const createbus = async (req, res) => {
-  const { vendorId, vehicleMake, vehicleModel, licensePlate, vehicleColor, numberOfSeats, milage , ac } = req.body;
+  const {
+    vendorId,
+    vehicleMake,
+    vehicleModel,
+    licensePlate,
+    vehicleColor,
+    numberOfSeats,
+    milage,
+    pricePerDay,
+    pricePerKm,
+    fuelType,
+    ac,
+  } = req.body;
   const files = req.files;
 
-  if (!vendorId || !vehicleMake || !vehicleModel || !licensePlate || !vehicleColor || !numberOfSeats || !milage || !ac || !files.ownerAdharCard || !files.ownerAdharCard || !files.ownerDrivingLicense
-    || files.vehicleImages.length!==5|| !files.vehicleInsurance || !files.vehicleRC
-   ) {
-    return res.status(400).send({ message: "All bus details and vendorId are required" });
+  if (
+    !vendorId ||
+    !vehicleMake ||
+    !vehicleModel ||
+    !licensePlate ||
+    !vehicleColor ||
+    !numberOfSeats ||
+    !milage ||
+    !ac ||
+    files.ownerAdharCard.length !== 2 ||
+    !files.ownerImage ||
+    files.ownerDrivingLicense.length !== 2 ||
+    files.vehicleImages.length !== 5 ||
+    files.vehicleInsurance.length !== 2 ||
+    files.vehicleRC.length !== 2 ||
+    !pricePerDay ||
+    !pricePerKm ||
+    !fuelType
+  ) {
+    return res
+      .status(400)
+      .send({ message: "All bus details and vendorId are required" });
   }
 
   try {
@@ -902,38 +1311,85 @@ const createbus = async (req, res) => {
     }
 
     const newBus = {
-      ownerAdharCard:`${process.env.baseURL}/${files?.ownerAdharCard[0]?.path}`,
-      ownerImage:`${process.env.baseURL}/${files?.ownerImage[0]?.path}`,
-      ownerDrivingLicense: `${process.env.baseURL}/${files?.ownerDrivingLicense[0]?.path}`,
-      vehicleImages: files?.vehicleImages.map((file)=>`${process.env.baseURL}/${file.path}`),
-      vehicleInsurance: `${process.env.baseURL}/${files?.vehicleInsurance[0]?.path}`,
-      vehicleRC: `${process.env.baseURL}/${files?.vehicleRC[0]?.path}`,
+      ownerImage: `${process.env.baseURL}/${files?.ownerImage[0]?.path}`,
+
+      ownerAdharCard: files?.ownerAdharCard.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      ownerDrivingLicense: files?.ownerDrivingLicense.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      vehicleImages: files?.vehicleImages.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      vehicleInsurance: files?.vehicleInsurance.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      vehicleRC: files?.vehicleRC.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
       vehicleMake,
       vehicleModel,
       licensePlate,
       vehicleColor,
       numberOfSeats,
       milage,
-      ac
+      ac,
+      pricePerDay,
+      pricePerKm,
+      fuelType,
     };
-    
 
     vendor.vehicles.buses.push(newBus);
     const savedVendor = await vendor.save();
 
     res.status(201).send({ message: "Bus created successfully", savedVendor });
   } catch (error) {
-    res.status(500).send({ message: "Internal Server Error", error: error.message });
+    res
+      .status(500)
+      .send({ message: "Internal Server Error", error: error.message });
   }
 };
 
 const recreatebus = async (req, res) => {
-  const { vendorId, vehicleId, vehicleMake, vehicleModel, licensePlate, vehicleColor, numberOfSeats, milage , ac} = req.body;
+  const {
+    vendorId,
+    vehicleId,
+    vehicleMake,
+    vehicleModel,
+    licensePlate,
+    vehicleColor,
+    numberOfSeats,
+    milage,
+    ac,
+    pricePerDay,
+    pricePerKm,
+    fuelType,
+  } = req.body;
   const files = req.files;
 
-  if (!vendorId || !vehicleMake || !vehicleModel || !licensePlate || !vehicleColor || !numberOfSeats || !milage || !ac || !files.ownerAdharCard || !files.ownerAdharCard || !files.ownerDrivingLicense
-    || files.vehicleImages.length!==5|| !files.vehicleInsurance || !files.vehicleRC) {
-    return res.status(400).send({ message: "All bus details and vendorId are required" });
+  if (
+    !vendorId ||
+    !vehicleMake ||
+    !vehicleModel ||
+    !licensePlate ||
+    !vehicleColor ||
+    !numberOfSeats ||
+    !milage ||
+    !ac ||
+    files.ownerAdharCard.length !== 2 ||
+    !files.ownerImage ||
+    files.ownerDrivingLicense.length !== 2 ||
+    files.vehicleImages.length !== 5 ||
+    files.vehicleInsurance.length !== 2 ||
+    files.vehicleRC.length !== 2 ||
+    !pricePerDay ||
+    !pricePerKm ||
+    !fuelType
+  ) {
+    return res
+      .status(400)
+      .send({ message: "All bus details and vendorId are required" });
   }
 
   try {
@@ -942,35 +1398,58 @@ const recreatebus = async (req, res) => {
       return res.status(404).send({ message: "Vendor not found" });
     }
 
-    const busIndex = vendor.vehicles.buses.find(bus => bus._id.toString() === vehicleId && bus.vehicleApprovedByAdmin === 'rejected');
+    const busIndex = vendor.vehicles.buses.find(
+      (bus) =>
+        bus._id.toString() === vehicleId &&
+        bus.vehicleApprovedByAdmin === "rejected"
+    );
     if (!busIndex) {
       return res.status(404).send({ message: "bus not found or not rejected" });
     }
     vendor.vehicles.buses.splice(busIndex, 1);
 
     const newBus = {
-      ownerAdharCard:`${process.env.baseURL}/${files?.ownerAdharCard[0]?.path}`,
-      ownerImage:`${process.env.baseURL}/${files?.ownerImage[0]?.path}`,
-      ownerDrivingLicense: `${process.env.baseURL}/${files?.ownerDrivingLicense[0]?.path}`,
-      vehicleImages: files?.vehicleImages.map((file)=>`${process.env.baseURL}/${file.path}`),
-      vehicleInsurance: `${process.env.baseURL}/${files?.vehicleInsurance[0]?.path}`,
-      vehicleRC: `${process.env.baseURL}/${files?.vehicleRC[0]?.path}`,
+      ownerImage: `${process.env.baseURL}/${files?.ownerImage[0]?.path}`,
+
+      ownerAdharCard: files?.ownerAdharCard.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      ownerDrivingLicense: files?.ownerDrivingLicense.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      vehicleImages: files?.vehicleImages.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      vehicleInsurance: files?.vehicleInsurance.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      vehicleRC: files?.vehicleRC.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
       vehicleMake,
       vehicleModel,
       licensePlate,
       vehicleColor,
       numberOfSeats,
       milage,
-      vehicleApprovedByAdmin: 'pending' ,
-      ac
+      vehicleApprovedByAdmin: "pending",
+      ac,
+      pricePerDay,
+      pricePerKm,
+      fuelType,
     };
 
     vendor.vehicles.buses.push(newBus);
     const savedVendor = await vendor.save();
 
-    res.status(201).send({ message: "bus recreated successfully with pending status", savedVendor });
+    res.status(201).send({
+      message: "bus recreated successfully with pending status",
+      savedVendor,
+    });
   } catch (error) {
-    res.status(500).send({ message: "Internal Server Error", error: error.message });
+    res
+      .status(500)
+      .send({ message: "Internal Server Error", error: error.message });
   }
 };
 
@@ -983,74 +1462,149 @@ const getVendorBus = async (req, res) => {
       return res.status(404).send({ message: "Vendor not found" });
     }
 
-    if (!vendor.vehicles || !vendor.vehicles.buses || vendor.vehicles.buses.length === 0) {
-      return res.status(404).send({ message: "No buses available for the vendor" });
+    if (
+      !vendor.vehicles ||
+      !vendor.vehicles.buses ||
+      vendor.vehicles.buses.length === 0
+    ) {
+      return res
+        .status(404)
+        .send({ message: "No buses available for the vendor" });
     }
 
-    const buses = vendor.vehicles.cars
-    
-    res.status(200).send({ message: " Buses retrieved successfully", buses });
+    const buses = vendor.vehicles.cars;
 
+    res.status(200).send({ message: " Buses retrieved successfully", buses });
   } catch (error) {
-    res.status(500).send({ message: "Internal Server Error", error: error.message });
+    res
+      .status(500)
+      .send({ message: "Internal Server Error", error: error.message });
   }
 };
 
-const editBus = async(req,res)=>{
-  const {vendorId , vehicleId} = req.params
-const updatedData = req.body
-const files = req.files
-if (!vendorId || !vehicleId) {
-  return res.status(400).send({ message: "VendorId and VehicleId are required" });
-}
-
-try {
-  const vendor = await vendorModel.findById(vendorId)
-  if(!vendor){
-    return res.status(404).send({message:"Vendot not found "})
+const editBus = async (req, res) => {
+  const { vendorId, vehicleId } = req.params;
+  const updatedData = req.body;
+  const files = req.files;
+  if (!vendorId || !vehicleId) {
+    return res
+      .status(400)
+      .send({ message: "VendorId and VehicleId are required" });
   }
 
-  const busToUpdate = vendor.vehicles.buses.find(bus => bus._id.toString() === vehicleId);
+  try {
+    const vendor = await vendorModel.findById(vendorId);
+    if (!vendor) {
+      return res.status(404).send({ message: "Vendot not found " });
+    }
 
-  if(!busToUpdate){
-    return res.status(404).send({message:"bus not found"})
+    const busToUpdate = vendor.vehicles.buses.find(
+      (bus) => bus._id.toString() === vehicleId
+    );
+
+    if (!busToUpdate) {
+      return res.status(404).send({ message: "bus not found" });
+    }
+
+    if (files) {
+      busToUpdate.ownerAdharCard = files?.ownerAdharCard
+        ? files.ownerAdharCard.map(
+            (file) => `${process.env.baseURL}/${file.path}`
+          )
+        : busToUpdate.ownerAdharCard;
+
+      busToUpdate.ownerImage = files?.ownerImage
+        ? `${process.env.baseURL}/${files?.ownerImage[0]?.path}`
+        : busToUpdate.ownerImage;
+
+      busToUpdate.ownerDrivingLicense = files?.ownerDrivingLicense
+        ? files.ownerDrivingLicense.map(
+            (file) => `${process.env.baseURL}/${file.path}`
+          )
+        : busToUpdate.ownerDrivingLicense;
+
+      busToUpdate.vehicleImages = files?.vehicleImages
+        ? files.vehicleImages.map(
+            (file) => `${process.env.baseURL}/${file.path}`
+          )
+        : busToUpdate.vehicleImages;
+
+      busToUpdate.vehicleInsurance = files?.vehicleInsurance
+        ? files.vehicleInsurance.map(
+            (file) => `${process.env.baseURL}/${file.path}`
+          )
+        : busToUpdate.vehicleInsurance;
+
+      busToUpdate.vehicleRC = files?.vehicleRC
+        ? files.vehicleRC.map((file) => `${process.env.baseURL}/${file.path}`)
+        : busToUpdate.vehicleRC;
+    }
+
+    busToUpdate.vehicleMake =
+      updatedData.vehicleMake || busToUpdate.vehicleMake;
+    busToUpdate.vehicleModel =
+      updatedData.vehicleModel || busToUpdate.vehicleModel;
+    busToUpdate.licensePlate =
+      updatedData.licensePlate || busToUpdate.licensePlate;
+    busToUpdate.vehicleColor =
+      updatedData.vehicleColor || busToUpdate.vehicleColor;
+    busToUpdate.numberOfSeats =
+      updatedData.numberOfSeats || busToUpdate.numberOfSeats;
+    busToUpdate.milage = updatedData.milage || busToUpdate.milage;
+    busToUpdate.ac = updatedData.ac || busToUpdate.ac;
+    busToUpdate.pricePerDay =
+      updatedData.pricePerDay || busToUpdate.pricePerDay;
+    busToUpdate.pricePerKm = updatedData.pricePerKm || busToUpdate.pricePerKm;
+    busToUpdate.fuelType = updatedData.fuelType || busToUpdate.fuelType;
+
+    const updatedBus = await vendor.save();
+
+    res.status(200).send({ message: "Bus updated successfully", updatedBus });
+  } catch (error) {
+    res
+      .status(500)
+      .send({ message: "Internal Server Error", error: error.message });
   }
-
-  if(files){
-busToUpdate.ownerAdharCard = files?.ownerAdharCard ?`${process.env.baseURL}/${files.ownerAdharCard[0]?.path}` : busToUpdate.ownerAdharCard
-busToUpdate.ownerImage = files?.ownerImage?`${process.env.baseURL}/${files?.ownerImage[0]?.path}`:busToUpdate.ownerImage
-busToUpdate.ownerDrivingLicense = files?.ownerDrivingLicense ? `${process.env.baseURL}/${files.ownerDrivingLicense[0]?.path}` : busToUpdate.ownerDrivingLicense;
-busToUpdate.vehicleImages = files?.vehicleImages ? files.vehicleImages.map(file => `${process.env.baseURL}/${file.path}`) : busToUpdate.vehicleImages;
-busToUpdate.vehicleInsurance = files?.vehicleInsurance ? `${process.env.baseURL}/${files.vehicleInsurance[0]?.path}` : busToUpdate.vehicleInsurance;
-busToUpdate.vehicleRC = files?.vehicleRC ? `${process.env.baseURL}/${files.vehicleRC[0]?.path}` : busToUpdate.vehicleRC;  
-}
-
-busToUpdate.vehicleMake = updatedData.vehicleMake || busToUpdate.vehicleMake;
-busToUpdate.vehicleModel = updatedData.vehicleModel || busToUpdate.vehicleModel;
-busToUpdate.licensePlate = updatedData.licensePlate || busToUpdate.licensePlate;
-busToUpdate.vehicleColor = updatedData.vehicleColor || busToUpdate.vehicleColor;
-busToUpdate.numberOfSeats = updatedData.numberOfSeats || busToUpdate.numberOfSeats;
-busToUpdate.milage = updatedData.milage || busToUpdate.milage;
-busToUpdate.ac = updatedData.ac || busToUpdate.ac
-
-const updatedBus = await vendor.save()
-
-res.status(200).send({message:"Bus updated successfully",updatedBus})
-
-} catch (error) {
-  res.status(500).send({ message: "Internal Server Error", error: error.message });
-
-}
-
-}
+};
 
 const createTruck = async (req, res) => {
-  const { vendorId, vehicleMake, vehicleModel, licensePlate, vehicleColor,ton,size } = req.body;
+  const {
+    vendorId,
+    vehicleMake,
+    vehicleModel,
+    licensePlate,
+    vehicleColor,
+    ton,
+    size,
+    goodsType,
+    pricePerDay,
+    pricePerKm,
+    fuelType,
+    milage,
+  } = req.body;
   const files = req.files;
 
-  if (!vendorId || !vehicleMake || !vehicleModel || !licensePlate || !vehicleColor ||  !ton || !size || !files.ownerAdharCard || !files.ownerImage || !files.ownerDrivingLicense
-    || files.vehicleImages.length!==5|| !files.vehicleInsurance || !files.vehicleRC
-   ) {
+  if (
+    !vendorId ||
+    !vehicleMake ||
+    !vehicleModel ||
+    !licensePlate ||
+    !vehicleColor ||
+    !ton ||
+    !size ||
+    !milage ||
+    !goodsType ||
+    files.ownerAdharCard.length !== 2 ||
+    !files.ownerImage ||
+    files.ownerDrivingLicense.length !== 2 ||
+    files.vehicleImages.length !== 5 ||
+    files.vehicleInsurance.length !== 2 ||
+    files.vehicleRC.length !== 2 ||
+    !pricePerDay ||
+    !pricePerKm ||
+    !fuelType ||
+    !milage
+  ) {
     return res.status(400).send({ message: "All truck details are required" });
   }
 
@@ -1061,78 +1615,153 @@ const createTruck = async (req, res) => {
     }
 
     const newTruck = {
-      ownerAdharCard:`${process.env.baseURL}/${files?.ownerAdharCard[0]?.path}`,
-      ownerImage:`${process.env.baseURL}/${files?.ownerImage[0]?.path}`,
-      ownerDrivingLicense: `${process.env.baseURL}/${files?.ownerDrivingLicense[0]?.path}`,
-      vehicleImages: files?.vehicleImages.map((file)=>`${process.env.baseURL}/${file.path}`),
-      vehicleInsurance: `${process.env.baseURL}/${files?.vehicleInsurance[0]?.path}`,
-      vehicleRC: `${process.env.baseURL}/${files?.vehicleRC[0]?.path}`,
-      vehicleMake,
-      vehicleModel,
-      licensePlate,
-      vehicleColor,
-      ton,
-      size
-    };
-    
+      ownerImage: `${process.env.baseURL}/${files?.ownerImage[0]?.path}`,
 
-    vendor.vehicles.trucks.push(newTruck);
-    const savedVendor = await vendor.save();
-
-    res.status(201).send({ message: "truck created successfully", savedVendor });
-  } catch (error) {
-    res.status(500).send({ message: "Internal Server Error", error: error.message });
-  }
-};
-
-const recreateTruck = async (req, res) => {
-  const { vendorId,vehicleId, vehicleMake, vehicleModel, licensePlate, vehicleColor,ton,size } = req.body;
-  const files = req.files;
-
-  if (!vendorId || !vehicleId || !vehicleMake || !vehicleModel || !licensePlate || !vehicleColor ||  !ton || !size || !files.ownerAdharCard || !files.ownerAdharCard || !files.ownerDrivingLicense
-    || files.vehicleImages.length!==5|| !files.vehicleInsurance || !files.vehicleRC
-   ) {
-    return res.status(400).send({ message: "All truck details are required" });
-  }
-
-  try {
-    const vendor = await vendorModel.findById(vendorId);
-    if (!vendor) {
-      return res.status(404).send({ message: "Vendor not found" });
-    }
-
-    const truckIndex = vendor.vehicles.trucks.find(truck => truck._id.toString() === vehicleId && truck.vehicleApprovedByAdmin === 'rejected');
-    if (!truckIndex) {
-      return res.status(404).send({ message: "truck not found or not rejected" });
-    }
-    vendor.vehicles.trucks.splice(truckIndex, 1);
-
-    const newTruck = {
-      ownerAdharCard:`${process.env.baseURL}/${files?.ownerAdharCard[0]?.path}`,
-      ownerImage:`${process.env.baseURL}/${files?.ownerImage[0]?.path}`,
-      ownerDrivingLicense: `${process.env.baseURL}/${files?.ownerDrivingLicense[0]?.path}`,
-      vehicleImages: files?.vehicleImages.map((file)=>`${process.env.baseURL}/${file.path}`),
-      vehicleInsurance: `${process.env.baseURL}/${files?.vehicleInsurance[0]?.path}`,
-      vehicleRC: `${process.env.baseURL}/${files?.vehicleRC[0]?.path}`,
+      ownerAdharCard: files?.ownerAdharCard.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      ownerDrivingLicense: files?.ownerDrivingLicense.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      vehicleImages: files?.vehicleImages.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      vehicleInsurance: files?.vehicleInsurance.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      vehicleRC: files?.vehicleRC.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
       vehicleMake,
       vehicleModel,
       licensePlate,
       vehicleColor,
       ton,
       size,
-      vehicleApprovedByAdmin: 'pending'  
+      goodsType,
+      pricePerDay,
+      pricePerKm,
+      fuelType,
+      milage,
     };
 
     vendor.vehicles.trucks.push(newTruck);
     const savedVendor = await vendor.save();
 
-    res.status(201).send({ message: "Truck recreated successfully with pending status", savedVendor });
+    res
+      .status(201)
+      .send({ message: "Truck created successfully", savedVendor });
   } catch (error) {
-    res.status(500).send({ message: "Internal Server Error", error: error.message });
+    res
+      .status(500)
+      .send({ message: "Internal Server Error", error: error.message });
   }
 };
 
-const getVendorTruck= async (req, res) => {
+const recreateTruck = async (req, res) => {
+  const {
+    vendorId,
+    vehicleId,
+    vehicleMake,
+    vehicleModel,
+    licensePlate,
+    vehicleColor,
+    ton,
+    size,
+    pricePerDay,
+    pricePerKm,
+    fuelType,
+    milage,
+  } = req.body;
+  const files = req.files;
+
+  if (
+    !vendorId ||
+    !vehicleId ||
+    !vehicleMake ||
+    !vehicleModel ||
+    !licensePlate ||
+    !vehicleColor ||
+    !ton ||
+    !size ||
+    !milage ||
+    files.ownerAdharCard.length !== 2 ||
+    !files.ownerImage ||
+    files.ownerDrivingLicense.length !== 2 ||
+    files.vehicleImages.length !== 5 ||
+    files.vehicleInsurance.length !== 2 ||
+    files.vehicleRC.length !== 2 ||
+    !pricePerDay ||
+    !pricePerKm ||
+    !fuelType
+  ) {
+    return res.status(400).send({ message: "All truck details are required" });
+  }
+
+  try {
+    const vendor = await vendorModel.findById(vendorId);
+    if (!vendor) {
+      return res.status(404).send({ message: "Vendor not found" });
+    }
+
+    const truckIndex = vendor.vehicles.trucks.find(
+      (truck) =>
+        truck._id.toString() === vehicleId &&
+        truck.vehicleApprovedByAdmin === "rejected"
+    );
+    if (!truckIndex) {
+      return res
+        .status(404)
+        .send({ message: "truck not found or not rejected" });
+    }
+    vendor.vehicles.trucks.splice(truckIndex, 1);
+
+    const newTruck = {
+      ownerImage: `${process.env.baseURL}/${files?.ownerImage[0]?.path}`,
+
+      ownerAdharCard: files?.ownerAdharCard.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      ownerDrivingLicense: files?.ownerDrivingLicense.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      vehicleImages: files?.vehicleImages.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      vehicleInsurance: files?.vehicleInsurance.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      vehicleRC: files?.vehicleRC.map(
+        (file) => `${process.env.baseURL}/${file.path}`
+      ),
+      vehicleMake,
+      vehicleModel,
+      licensePlate,
+      vehicleColor,
+      ton,
+      size,
+      vehicleApprovedByAdmin: "pending",
+      pricePerDay,
+      pricePerKm,
+      fuelType,
+      milage,
+    };
+
+    vendor.vehicles.trucks.push(newTruck);
+    const savedVendor = await vendor.save();
+
+    res.status(201).send({
+      message: "Truck recreated successfully with pending status",
+      savedVendor,
+    });
+  } catch (error) {
+    res
+      .status(500)
+      .send({ message: "Internal Server Error", error: error.message });
+  }
+};
+
+const getVendorTruck = async (req, res) => {
   try {
     const { vendorId } = req.params;
 
@@ -1141,88 +1770,136 @@ const getVendorTruck= async (req, res) => {
       return res.status(404).send({ message: "Vendor not found" });
     }
 
-    if (!vendor.vehicles || !vendor.vehicles.trucks || vendor.vehicles.trucks.length === 0) {
-      return res.status(404).send({ message: "No trucks available for the vendor" });
+    if (
+      !vendor.vehicles ||
+      !vendor.vehicles.trucks ||
+      vendor.vehicles.trucks.length === 0
+    ) {
+      return res
+        .status(404)
+        .send({ message: "No trucks available for the vendor" });
     }
 
-    const trucks = vendor.vehicles.trucks
-    
-    res.status(200).send({ message: " Trucks retrieved successfully", trucks });
+    const trucks = vendor.vehicles.trucks;
 
+    res.status(200).send({ message: " Trucks retrieved successfully", trucks });
   } catch (error) {
-    res.status(500).send({ message: "Internal Server Error", error: error.message });
+    res
+      .status(500)
+      .send({ message: "Internal Server Error", error: error.message });
   }
 };
 
-const editTruck = async(req,res)=>{
-  const {vendorId , vehicleId} = req.params
-const updatedData = req.body
-const files = req.files
-if (!vendorId || !vehicleId) {
-  return res.status(400).send({ message: "VendorId and VehicleId are required" });
-}
-
-try {
-  const vendor = await vendorModel.findById(vendorId)
-  if(!vendor){
-    return res.status(404).send({message:"Vendot not found "})
+const editTruck = async (req, res) => {
+  const { vendorId, vehicleId } = req.params;
+  const updatedData = req.body;
+  const files = req.files;
+  if (!vendorId || !vehicleId) {
+    return res
+      .status(400)
+      .send({ message: "VendorId and VehicleId are required" });
   }
 
-  const truckToUpdate = vendor.vehicles.trucks.find(truck => truck._id.toString() === vehicleId);
+  try {
+    const vendor = await vendorModel.findById(vendorId);
+    if (!vendor) {
+      return res.status(404).send({ message: "Vendot not found " });
+    }
 
-  if(!truckToUpdate){
-    return res.status(404).send({message:"trucks not found"})
+    const truckToUpdate = vendor.vehicles.trucks.find(
+      (truck) => truck._id.toString() === vehicleId
+    );
+
+    if (!truckToUpdate) {
+      return res.status(404).send({ message: "trucks not found" });
+    }
+
+    if (files) {
+      truckToUpdate.ownerAdharCard = files?.ownerAdharCard
+        ? files.ownerAdharCard.map(
+            (file) => `${process.env.baseURL}/${file.path}`
+          )
+        : truckToUpdate.ownerAdharCard;
+
+      truckToUpdate.ownerImage = files?.ownerImage
+        ? `${process.env.baseURL}/${files?.ownerImage[0]?.path}`
+        : truckToUpdate.ownerImage;
+
+      truckToUpdate.ownerDrivingLicense = files?.ownerDrivingLicense
+        ? files.ownerDrivingLicense.map(
+            (file) => `${process.env.baseURL}/${file.path}`
+          )
+        : truckToUpdate.ownerDrivingLicense;
+
+      truckToUpdate.vehicleImages = files?.vehicleImages
+        ? files.vehicleImages.map(
+            (file) => `${process.env.baseURL}/${file.path}`
+          )
+        : truckToUpdate.vehicleImages;
+
+      truckToUpdate.vehicleInsurance = files?.vehicleInsurance
+        ? files.vehicleInsurance.map(
+            (file) => `${process.env.baseURL}/${file.path}`
+          )
+        : truckToUpdate.vehicleInsurance;
+
+      truckToUpdate.vehicleRC = files?.vehicleRC
+        ? files.vehicleRC.map((file) => `${process.env.baseURL}/${file.path}`)
+        : truckToUpdate.vehicleRC;
+    }
+
+    truckToUpdate.vehicleMake =
+      updatedData.vehicleMake || truckToUpdate.vehicleMake;
+    truckToUpdate.vehicleModel =
+      updatedData.vehicleModel || truckToUpdate.vehicleModel;
+    truckToUpdate.licensePlate =
+      updatedData.licensePlate || truckToUpdate.licensePlate;
+    truckToUpdate.vehicleColor =
+      updatedData.vehicleColor || truckToUpdate.vehicleColor;
+    truckToUpdate.ton = updatedData.ton || truckToUpdate.ton;
+    truckToUpdate.size = updatedData.size || truckToUpdate.size;
+    truckToUpdate.pricePerDay =
+      updatedData.pricePerDay || truckToUpdate.pricePerDay;
+    truckToUpdate.pricePerKm =
+      updatedData.pricePerKm || truckToUpdate.pricePerKm;
+    truckToUpdate.fuelType = updatedData.fuelType || truckToUpdate.fuelType;
+    truckToUpdate.milage = updatedData.milage || truckToUpdate.milage;
+
+    const updatedTruck = await vendor.save();
+
+    res.status(201).send({ message: "Car updated successfully", updatedTruck });
+  } catch (error) {
+    res
+      .status(500)
+      .send({ message: "Internal Server Error", error: error.message });
   }
+};
 
-  if(files){
-truckToUpdate.ownerAdharCard = files?.ownerAdharCard ?`${process.env.baseURL}/${files.ownerAdharCard[0]?.path}` : truckToUpdate.ownerAdharCard
-truckToUpdate.ownerImage = files?.ownerImage?`${process.env.baseURL}/${files?.ownerImage[0]?.path}`:truckToUpdate.ownerImage
-truckToUpdate.ownerDrivingLicense = files?.ownerDrivingLicense ? `${process.env.baseURL}/${files.ownerDrivingLicense[0]?.path}` : truckToUpdate.ownerDrivingLicense;
-truckToUpdate.vehicleImages = files?.vehicleImages ? files.vehicleImages.map(file => `${process.env.baseURL}/${file.path}`) : truckToUpdate.vehicleImages;
-truckToUpdate.vehicleInsurance = files?.vehicleInsurance ? `${process.env.baseURL}/${files.vehicleInsurance[0]?.path}` : truckToUpdate.vehicleInsurance;
-truckToUpdate.vehicleRC = files?.vehicleRC ? `${process.env.baseURL}/${files.vehicleRC[0]?.path}` : truckToUpdate.vehicleRC;  
-}
-
-truckToUpdate.vehicleMake = updatedData.vehicleMake || truckToUpdate.vehicleMake;
-truckToUpdate.vehicleModel = updatedData.vehicleModel || truckToUpdate.vehicleModel;
-truckToUpdate.licensePlate = updatedData.licensePlate || truckToUpdate.licensePlate;
-truckToUpdate.vehicleColor = updatedData.vehicleColor || truckToUpdate.vehicleColor;
-truckToUpdate.ton = updatedData.ton || truckToUpdate.ton;
-truckToUpdate.size = updatedData.size || truckToUpdate.size;
-
-const updatedTruck = await vendor.save()
-
-res.status(201).send({message:"Car updated successfully",updatedTruck})
-
-} catch (error) {
-  res.status(500).send({ message: "Internal Server Error", error: error.message });
-
-}
-
-}
-
-const getBookingsByVendorId = async (req,res)=>{
-  const { vendorId } = req.params; 
+const getBookingsByVendorId = async (req, res) => {
+  const { vendorId } = req.params;
 
   if (!vendorId) {
     return res.status(400).send({ message: "Vendor ID is required" });
   }
- 
+
   try {
-    const bookings = await bookingModel.find({ "car.vendorId": new mongoose.Types.ObjectId(vendorId) });
-
-    if (bookings.length === 0) {
-      return res.status(404).send({ message: "No bookings found for this Vendor" });
-    } 
-
-    res.status(200).send({ message: "Bookings retrieved successfully", bookings });
+    const bookings = await bookingModel.find({
+      "vehicleDetails.vendorId": new mongoose.Types.ObjectId(vendorId),
+    });
+         
+    res
+      .status(200)
+      .send({ message: "Bookings retrieved successfully", bookings });
   } catch (error) {
-    res.status(500).send({ message: "Internal Server Error", error: error.message });
+    res
+      .status(500)
+      .send({ message: "Internal Server Error", error: error.message });
   }
-}
+};
 
 const vendorBookingApproval = async (req, res) => {
-  const { bookingId , totalFare , vendorRejectedReason , vendorApprovedStatus } = req.body;
+  const { bookingId, totalFare, vendorRejectedReason, vendorApprovedStatus } =
+    req.body;
 
   if (!bookingId) {
     return res.status(400).send({ message: "Booking ID is required" });
@@ -1244,93 +1921,173 @@ const vendorBookingApproval = async (req, res) => {
     const targetVehicleId = booking.vehicleDetails.foundVehicle._id.toString();
 
     const vehicleCategories = Object.values(vendor.vehicles);
-    
+
     let foundVehicle = null;
-    
+
     for (const category of vehicleCategories) {
-      foundVehicle = category.find((vehicle) => vehicle._id.toString() === targetVehicleId);
-      
+      foundVehicle = category.find(
+        (vehicle) => vehicle._id.toString() === targetVehicleId
+      );
+
       if (foundVehicle) {
-        break; 
+        break;
       }
-    } 
+    }
     if (!foundVehicle) {
-      return res.status(404).send({ message: "Vehicle not found in the vendor's inventory" });
+      return res
+        .status(404)
+        .send({ message: "Vehicle not found in the vendor's inventory" });
     }
 
     if (vendorApprovedStatus === "rejected") {
-
       if (!vendorRejectedReason) {
-        return res.status(400).send({ message: "Please provide a reason for rejection" });
+        return res
+          .status(400)
+          .send({ message: "Please provide a reason for rejection" });
       }
 
-      const currentMonthRejections = vendor.rejectionHistory.filter(rejection => {
-        const rejectionDate = new Date(rejection.date);
-        const now = new Date();
-        return (
-          rejectionDate.getMonth() === now.getMonth() &&
-          rejectionDate.getFullYear() === now.getFullYear()
-        );
-      });
+      const currentMonthRejections = vendor.rejectionHistory.filter(
+        (rejection) => {
+          const rejectionDate = new Date(rejection.date);
+          const now = new Date();
+          return (
+            rejectionDate.getMonth() === now.getMonth() &&
+            rejectionDate.getFullYear() === now.getFullYear()
+          );
+        }
+      );
 
       if (currentMonthRejections.length >= 2) {
         return res.status(403).send({
-          message: "You have exceeded the rejection limit for this month. You can only reject bookings two times in a month.",
+          message:
+            "You have exceeded the rejection limit for this month. You can only reject bookings two times in a month.",
         });
       }
 
       vendor.rejectionHistory.push({ date: new Date() });
 
-      foundVehicle.vehicleAvailable = "yes";
-      foundVehicle.returnDate = undefined;
-      // foundVehicle.tripStatus = 'cancelled' 
+      const activeBookings = await bookingModel.find({
+        "vehicleDetails.foundVehicle._id": foundVehicle._id,
+        vendorApprovedStatus: { $in: ["pending", "approved"] },
+        tripStatus: { $nin: ["ongoing", "completed", "cancelled"] },
+      });
 
+      const vehicleAvailableLogic = () => {
+        if (activeBookings.length > 0) {
+          foundVehicle.vehicleAvailable = "no";
+        } else {
+          foundVehicle.vehicleAvailable = "yes";
+          foundVehicle.returnDate = undefined;
+        }
+      };
+
+      vehicleAvailableLogic();
       await vendor.save();
       booking.vendorRejectedReason = vendorRejectedReason;
       booking.vendorApprovedStatus = "rejected";
+      booking.tripStatus = "cancelled";
+      booking.vendorCancelled = true;
       await booking.save();
- 
+
       const rejectionMessage = {
         title: "Booking Rejected",
-        description: `Dear ${customer.userName}, your booking for the vehicle ${foundVehicle.vehicleModel} (${foundVehicle.licensePlate}) has been rejected. Reason: ${vendorRejectedReason}.`
+        description: `Dear ${customer.userName}, your booking for the ${foundVehicle.subCategory} , ${foundVehicle.vehicleModel} (${foundVehicle.licensePlate}) has been rejected. Reason: ${vendorRejectedReason}.`,
       };
       customer.messages.push(rejectionMessage);
       await customer.save();
 
-      return res.status(200).send({ message: "Booking rejected successfully", booking });
+      return res
+        .status(200)
+        .send({ message: "Booking rejected successfully", booking });
     }
 
     if (vendorApprovedStatus === "approved") {
       if (!totalFare) {
-        return res.status(400).send({ message: "Total fare is required for approval" });
+        return res
+          .status(400)
+          .send({ message: "Total fare is required for approval" });
       }
+
+      if (booking.vehicleDetails.foundVehicle.subCategory === "auto") {
+        const OTP = generatePin();
+
+        booking.otpForAuto = OTP;
+        await booking.save();
+      }
+
+      booking.totalFare = customer.penaltyAmount
+        ? totalFare + customer.penaltyAmount
+        : totalFare;
 
       const commissionPercentage = foundVehicle.adminCommissionPercentage;
       const adminCommissionAmount = (commissionPercentage / 100) * totalFare;
 
-      booking.totalFare = totalFare;
       booking.vendorApprovedStatus = "approved";
-      booking.remainingPayment = totalFare - booking.advanceAmount;
+      booking.remainingPayment = booking.advanceAmount
+        ? totalFare - booking.advanceAmount
+        : totalFare;
       booking.adminCommissionAmount = adminCommissionAmount;
-      booking.vendorTotalPayment = totalFare - adminCommissionAmount 
-      booking.tripStatus = 'start'
+      booking.vendorTotalPayment = totalFare - adminCommissionAmount;
+      booking.tripStatus = "start";
 
       await booking.save();
 
       const approvalMessage = {
         title: "Booking Approved",
-        description: `Dear ${customer.userName}, your booking for the vehicle ${foundVehicle.vehicleModel} (${foundVehicle.licensePlate}) has been approved. Total fare is ${totalFare}, with remaining payment of ${booking.remainingPayment}.`
+        description: `Dear ${customer.userName}, your booking for the ${foundVehicle.subCategory} , ${foundVehicle.vehicleModel} (${foundVehicle.licensePlate}) has been approved. Total fare is ${totalFare}, with remaining payment of ${booking.remainingPayment}.`,
       };
       customer.messages.push(approvalMessage);
       await customer.save();
 
-      return res.status(200).send({ message: "Booking approved successfully", booking });
+      return res
+        .status(200)
+        .send({ message: "Booking approved successfully", booking });
     }
 
     res.status(400).send({ message: "Invalid vendorApprovedStatus" });
-
   } catch (error) {
-    res.status(500).send({ message: "Internal Server Error", error: error.message });
+    res
+      .status(500)
+      .send({ message: "Internal Server Error", error: error.message });
+  }
+};
+
+const VendorStartTrip = async (req, res) => {
+  const { bookingId, otp } = req.body;
+
+  if (!bookingId) {
+    return res.status(400).send({ message: "Booking ID is required" });
+  }
+
+  try {
+    const booking = await bookingModel.findById(bookingId);
+    if (!booking) {
+      return res.status(404).send({ message: "Bookings not found" });
+    }
+
+    if (booking.vehicleDetails.foundVehicle.subCategory === "auto") {
+      if (!otp) {
+        return res
+          .status(400)
+          .send({ message: "OTP is required for auto vehicles" });
+      }
+
+      if (booking.otpForAuto !== otp) {
+        return res
+          .status(401)
+          .send({ message: "Invalid OTP, please enter a valid OTP" });
+      }
+    }
+
+    booking.tripStatus = "ongoing";
+    await booking.save();
+    await res
+      .status(200)
+      .send({ message: "Trip Started successfully", booking });
+  } catch (error) {
+    res
+      .status(500)
+      .send({ message: "Internal Server Error", error: error.message });
   }
 };
 
@@ -1355,45 +2112,75 @@ const vendorCompleteRide = async (req, res) => {
     }
 
     const targetVehicleId = booking.vehicleDetails.foundVehicle._id.toString();
+
     const vehicleCategories = Object.values(vendor.vehicles);
 
     let foundVehicle = null;
     for (const category of vehicleCategories) {
-      foundVehicle = category.find(vehicle => vehicle._id.toString() === targetVehicleId);
+      foundVehicle = category.find(
+        (vehicle) => vehicle._id.toString() === targetVehicleId
+      );
       if (foundVehicle) {
         break;
       }
     }
 
     if (!foundVehicle) {
-      return res.status(404).send({ message: "Vehicle not found in the vendor's inventory" });
+      return res
+        .status(404)
+        .send({ message: "Vehicle not found in the vendor's inventory" });
     }
+    const activeBookings = await bookingModel.find({
+      "vehicleDetails.foundVehicle._id": foundVehicle._id,
+      vendorApprovedStatus: { $in: ["pending", "approved"] },
+      tripStatus: { $nin: ["ongoing", "completed", "cancelled"] },
+    });
 
-    foundVehicle.vehicleAvailable = 'yes';
+    const vehicleAvailableLogic = () => {
+      if (activeBookings.length > 0) {
+        foundVehicle.vehicleAvailable = "no";
+      } else {
+        foundVehicle.vehicleAvailable = "yes";
+        foundVehicle.returnDate = undefined;
+      }
+    };
+
+    vehicleAvailableLogic();
     vendor.noOfBookings = vendor.noOfBookings ? vendor.noOfBookings + 1 : 1;
-    vendor.totalEarnings =  vendor.totalEarnings?  vendor.totalEarnings + booking.vendorTotalPayment : booking.vendorTotalPayment
- 
+    vendor.totalEarnings = vendor.totalEarnings
+      ? vendor.totalEarnings + booking.vendorTotalPayment
+      : booking.vendorTotalPayment;
+
     await vendor.save();
 
-    booking.completedAt = new Date();  
+    customer.penaltyAmount = undefined;
+
+    await customer.save();
+
+    booking.completedAt = new Date();
     booking.paymentMethod = paymentMethod;
-    booking.tripStatus = 'completed';
+    booking.tripStatus = "completed";
+    booking.otpForAuto = undefined;
 
     await booking.save();
- 
-    return res.status(200).send({ message: "Trip completed successfully",booking});
 
+    return res
+      .status(200)
+      .send({ message: "Trip completed successfully", booking });
   } catch (error) {
-    return res.status(500).send({ message: "Internal Server Error", error: error.message });
+    return res
+      .status(500)
+      .send({ message: "Internal Server Error", error: error.message });
   }
 };
-
 
 const storeFCMTokenToVendor = async (req, res) => {
   const { vendorId, fcmToken } = req.body;
 
   if (!vendorId || !fcmToken) {
-    return res.status(400).send({ message: "Vendor ID and FCM token are required" });
+    return res
+      .status(400)
+      .send({ message: "Vendor ID and FCM token are required" });
   }
 
   try {
@@ -1405,12 +2192,13 @@ const storeFCMTokenToVendor = async (req, res) => {
     vendor.fcmToken = fcmToken;
     await vendor.save();
 
-    res.status(200).send({ message: "FCM token stored successfully",vendor });
+    res.status(200).send({ message: "FCM token stored successfully", vendor });
   } catch (error) {
-    res.status(500).send({ message: "Internal Server Error", error: error.message });
+    res
+      .status(500)
+      .send({ message: "Internal Server Error", error: error.message });
   }
 };
-
 
 const getVendorBookingsByMonth = async (req, res) => {
   const { vendorId } = req.body;
@@ -1424,40 +2212,44 @@ const getVendorBookingsByMonth = async (req, res) => {
       {
         $match: {
           "vehicleDetails.vendorId": new mongoose.Types.ObjectId(vendorId),
-          tripStatus: "completed", 
-          bookedAt: { $exists: true, $type: "date" } 
-        }
+          tripStatus: "completed",
+          bookedAt: { $exists: true, $type: "date" },
+        },
       },
       {
         $project: {
-          year: { $year: "$bookedAt" }, 
-          month: { $month: "$bookedAt" }, 
-          vendorTotalPayment: 1, 
-          bookingDetails: "$$ROOT" 
-        }
+          year: { $year: "$bookedAt" },
+          month: { $month: "$bookedAt" },
+          vendorTotalPayment: 1,
+          bookingDetails: "$$ROOT",
+        },
       },
       {
         $group: {
           _id: { year: "$year", month: "$month" },
           totalVendorPayment: { $sum: "$vendorTotalPayment" },
-          bookings: { $push: "$bookingDetails" } 
-        }
+          bookings: { $push: "$bookingDetails" },
+        },
       },
       {
-        $sort: { "_id.year": 1, "_id.month": 1 }
-      }
+        $sort: { "_id.year": 1, "_id.month": 1 },
+      },
     ]);
 
     if (bookingsByMonth.length === 0) {
-      return res.status(404).send({ message: "No bookings found for this vendor." });
+      return res
+        .status(404)
+        .send({ message: "No bookings found for this vendor." });
     }
 
     res.status(200).send({
       message: "Monthly bookings data fetched successfully",
-      bookingsByMonth
+      bookingsByMonth,
     });
   } catch (error) {
-    res.status(500).send({ message: "Internal Server Error", error: error.message });
+    res
+      .status(500)
+      .send({ message: "Internal Server Error", error: error.message });
   }
 };
 
@@ -1474,41 +2266,50 @@ const getVendorBookingsByWeek = async (req, res) => {
         $match: {
           "vehicleDetails.vendorId": new mongoose.Types.ObjectId(vendorId),
           tripStatus: "completed",
-          bookedAt: { $exists: true, $type: "date" } // Ensure valid booking dates
-        }
+          bookedAt: { $exists: true, $type: "date" },
+        },
       },
       {
         $project: {
           year: { $year: "$bookedAt" },
           month: { $month: "$bookedAt" },
-          week: { $isoWeek: "$bookedAt" }, // Get the ISO week number
+          week: { $isoWeek: "$bookedAt" },
           vendorTotalPayment: 1,
-          bookingDetails: "$$ROOT"
-        }
+          bookingDetails: "$$ROOT",
+        },
       },
       {
         $group: {
           _id: { year: "$year", month: "$month", week: "$week" },
           totalVendorPayment: { $sum: "$vendorTotalPayment" },
-          bookings: { $push: "$bookingDetails" }
-        }
+          bookings: { $push: "$bookingDetails" },
+        },
       },
       {
-        $sort: { "_id.year": 1, "_id.month": 1, "_id.week": 1 } // Sort by year, month, week
-      }
+        $sort: { "_id.year": -1, "_id.month": -1, "_id.week": -1 },
+      },
     ]);
 
     if (bookingsByWeek.length === 0) {
-      return res.status(404).send({ message: "No bookings found for this vendor." });
+      return res
+        .status(404)
+        .send({ message: "No bookings found for this vendor." });
     }
 
-    // Format the response to show weekly date ranges
     const formattedBookings = bookingsByWeek.map((weekData) => {
-      const firstDayOfWeek = getFirstDayOfWeek(weekData._id.year, weekData._id.week);
-      const lastDayOfWeek = getLastDayOfWeek(weekData._id.year, weekData._id.week);
+      const firstDayOfWeek = getFirstDayOfWeek(
+        weekData._id.year,
+        weekData._id.week
+      );
+      const lastDayOfWeek = getLastDayOfWeek(
+        weekData._id.year,
+        weekData._id.week
+      );
 
       return {
-        weekRange: `${formatDate(firstDayOfWeek)} - ${formatDate(lastDayOfWeek)}`,
+        weekRange: `${formatDate(firstDayOfWeek)} - ${formatDate(
+          lastDayOfWeek
+        )}`,
         totalVendorPayment: weekData.totalVendorPayment,
         bookings: weekData.bookings,
       };
@@ -1516,10 +2317,12 @@ const getVendorBookingsByWeek = async (req, res) => {
 
     res.status(200).send({
       message: "Weekly bookings data fetched successfully",
-      bookingsByWeek: formattedBookings,
+      bookingsByWeek: formattedBookings[0],
     });
   } catch (error) {
-    res.status(500).send({ message: "Internal Server Error", error: error.message });
+    res
+      .status(500)
+      .send({ message: "Internal Server Error", error: error.message });
   }
 };
 
@@ -1536,56 +2339,64 @@ const getVendorBookingsByMonthAndWeek = async (req, res) => {
         $match: {
           "vehicleDetails.vendorId": new mongoose.Types.ObjectId(vendorId),
           tripStatus: "completed",
-          bookedAt: { $exists: true, $type: "date" } // Ensure valid booking dates
-        }
+          bookedAt: { $exists: true, $type: "date" },
+        },
       },
       {
         $project: {
           year: { $year: "$bookedAt" },
           month: { $month: "$bookedAt" },
-          week: { $isoWeek: "$bookedAt" }, // Get the ISO week number
+          week: { $isoWeek: "$bookedAt" },
           vendorTotalPayment: 1,
-          bookingDetails: "$$ROOT"
-        }
+          bookingDetails: "$$ROOT",
+        },
       },
       {
         $group: {
           _id: { year: "$year", month: "$month", week: "$week" },
           totalVendorPayment: { $sum: "$vendorTotalPayment" },
-          bookings: { $push: "$bookingDetails" }
-        }
+          bookings: { $push: "$bookingDetails" },
+        },
       },
       {
         $group: {
           _id: { year: "$_id.year", month: "$_id.month" },
-          totalMonthlyVendorPayment: { $sum: "$totalVendorPayment" }, // Sum of all weeks in the month
+          totalMonthlyVendorPayment: { $sum: "$totalVendorPayment" },
           weeklyData: {
             $push: {
               week: "$_id.week",
               totalVendorPayment: "$totalVendorPayment",
-              bookings: "$bookings"
-            }
-          }
-        }
+              bookings: "$bookings",
+            },
+          },
+        },
       },
       {
-        $sort: { "_id.year": 1, "_id.month": 1 } // Sort by year and month
-      }
+        $sort: { "_id.year": 1, "_id.month": 1 },
+      },
     ]);
 
     if (bookingsByMonthAndWeek.length === 0) {
-      return res.status(404).send({ message: "No bookings found for this vendor." });
+      return res
+        .status(404)
+        .send({ message: "No bookings found for this vendor." });
     }
 
-    // Format the response to show both month-wise and week-wise breakdown
     const formattedBookings = bookingsByMonthAndWeek.map((monthData) => {
-      // Get the first and last day of each week
       const weeklyDataFormatted = monthData.weeklyData.map((weekData) => {
-        const firstDayOfWeek = getFirstDayOfWeek(monthData._id.year, weekData.week);
-        const lastDayOfWeek = getLastDayOfWeek(monthData._id.year, weekData.week);
+        const firstDayOfWeek = getFirstDayOfWeek(
+          monthData._id.year,
+          weekData.week
+        );
+        const lastDayOfWeek = getLastDayOfWeek(
+          monthData._id.year,
+          weekData.week
+        );
 
         return {
-          weekRange: `${formatDate(firstDayOfWeek)} - ${formatDate(lastDayOfWeek)}`,
+          weekRange: `${formatDate(firstDayOfWeek)} - ${formatDate(
+            lastDayOfWeek
+          )}`,
           totalVendorPayment: weekData.totalVendorPayment,
           bookings: weekData.bookings,
         };
@@ -1594,7 +2405,7 @@ const getVendorBookingsByMonthAndWeek = async (req, res) => {
       return {
         month: `${monthData._id.month}-${monthData._id.year}`,
         totalMonthlyVendorPayment: monthData.totalMonthlyVendorPayment,
-        weeks: weeklyDataFormatted
+        weeks: weeklyDataFormatted,
       };
     });
 
@@ -1603,33 +2414,175 @@ const getVendorBookingsByMonthAndWeek = async (req, res) => {
       bookingsByMonthAndWeek: formattedBookings,
     });
   } catch (error) {
-    res.status(500).send({ message: "Internal Server Error", error: error.message });
+    res
+      .status(500)
+      .send({ message: "Internal Server Error", error: error.message });
   }
 };
 
-// Helper function to get the first day of a given ISO week in a month
 const getFirstDayOfWeek = (year, week) => {
-  const firstDayOfYear = new Date(year, 0, 1); // Start of the year
-  const dayOffset = (week - 1) * 7; // Calculate offset by week
-  const firstDayOfWeek = new Date(firstDayOfYear.setDate(firstDayOfYear.getDate() + dayOffset));
-  
-  // Ensure the day doesn't exceed into a previous year
+  const firstDayOfYear = new Date(year, 0, 1);
+  const dayOffset = (week - 1) * 7;
+  const firstDayOfWeek = new Date(
+    firstDayOfYear.setDate(firstDayOfYear.getDate() + dayOffset)
+  );
+
   if (firstDayOfWeek.getFullYear() > year) return new Date(year, 0, 1);
   return firstDayOfWeek;
 };
 
-// Helper function to get the last day of a given ISO week
 const getLastDayOfWeek = (year, week) => {
   const firstDayOfWeek = getFirstDayOfWeek(year, week);
-  return new Date(firstDayOfWeek.setDate(firstDayOfWeek.getDate() + 6)); // Add 6 days to get the last day of the week
+  return new Date(firstDayOfWeek.setDate(firstDayOfWeek.getDate() + 6));
 };
 
-// Helper function to format the date as "dd MMM yyyy"
 const formatDate = (date) => {
-  return `${date.getDate().toString().padStart(2, '0')} ${date.toLocaleString('default', { month: 'long' })} ${date.getFullYear()}`;
+  return `${date.getDate().toString().padStart(2, "0")} ${date.toLocaleString(
+    "default",
+    { month: "long" }
+  )} ${date.getFullYear()}`;
 };
 
+const getVendorBookingsPaymentByCashByWeek = async (req, res) => {
+  const { vendorId } = req.body;
 
+  if (!vendorId) {
+    return res.status(400).send({ message: "Vendor ID is required" });
+  }
+
+  try {
+    const bookingsByWeek = await bookingModel.aggregate([
+      {
+        $match: {
+          "vehicleDetails.vendorId": new mongoose.Types.ObjectId(vendorId),
+          tripStatus: "completed",
+          paymentMethod: "cash",
+          bookedAt: { $exists: true, $type: "date" },
+        },
+      },
+      {
+        $project: {
+          year: { $year: "$bookedAt" },
+          month: { $month: "$bookedAt" },
+          week: { $isoWeek: "$bookedAt" },
+          vendorTotalPayment: 1,
+          bookingDetails: "$$ROOT",
+        },
+      },
+      {
+        $group: {
+          _id: { year: "$year", month: "$month", week: "$week" },
+          totalVendorPayment: { $sum: "$vendorTotalPayment" },
+          bookings: { $push: "$bookingDetails" },
+        },
+      },
+      {
+        $sort: { "_id.year": -1, "_id.month": -1, "_id.week": -1 },
+      },
+    ]);
+
+    if (bookingsByWeek.length === 0) {
+      return res
+        .status(404)
+        .send({ message: "No bookings found for this vendor." });
+    }
+
+    const formattedBookings = bookingsByWeek.map((weekData) => {
+      const firstDayOfWeek = getFirstDayOfWeek(
+        weekData._id.year,
+        weekData._id.week
+      );
+      const lastDayOfWeek = getLastDayOfWeek(
+        weekData._id.year,
+        weekData._id.week
+      );
+
+      return {
+        weekRange: `${formatDate(firstDayOfWeek)} - ${formatDate(
+          lastDayOfWeek
+        )}`,
+        totalVendorPayment: weekData.totalVendorPayment,
+        bookings: weekData.bookings,
+      };
+    });
+
+    res.status(200).send({
+      message: "Weekly bookings data fetched successfully",
+      bookingsByWeek: formattedBookings,
+    });
+  } catch (error) {
+    res
+      .status(500)
+      .send({ message: "Internal Server Error", error: error.message });
+  }
+};
+
+const vendorAdvanceRefund = async (req, res) => {
+  const { bookingId } = req.body;
+  if (!bookingId) {
+    return res.status(400).send({ message: "Booking ID is required" });
+  }
+
+  try {
+    const booking = await bookingModel.findById(bookingId);
+
+    if (!booking) {
+      return res.status(404).send({ message: "Booking not found" });
+    }
+
+    booking.advanceRefund = true;
+    await booking.save();
+
+    res.status(200).send({ message: "Advance refunded successfully" });
+  } catch (error) {
+    res
+      .status(500)
+      .send({ message: "Internal Server Error", error: error.message });
+  }
+};
+
+const vendorSendMessage = async (req, res) => {
+  const { vendorId, adminId, content } = req.body;
+
+  if (!vendorId || !adminId || !content) {
+    return res
+      .status(400)
+      .send({ message: "Please fill the all required fields" });
+  }
+
+  try {
+    let chat = await vendorChat.findOne({ vendor: vendorId, admin: adminId });
+
+    if (!chat) {
+      chat = new vendorChat({
+        vendor: vendorId,
+        admin: adminId,
+      });
+      await chat.save();
+    }
+
+    const message = new vendorMessage({
+      sender: vendorId,
+      receiver: adminId,
+      content,
+      senderModel: "Vendors",
+      receiverModel: "admin",
+    });
+
+    await message.save();
+
+    chat.messages.push(message._id);
+    chat.lastUpdated = new Date();
+
+    await chat.save();
+
+    return res.status(200).json({ message: "Message sent", chat });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ error: "Internal Server Error", details: error.message });
+  }
+};
 
 module.exports = {
   vendorSignup,
@@ -1655,7 +2608,7 @@ module.exports = {
   getVendorVans,
   editVan,
   createbus,
-  recreatebus, 
+  recreatebus,
   getVendorBus,
   editBus,
   createTruck,
@@ -1665,8 +2618,12 @@ module.exports = {
   getBookingsByVendorId,
   vendorBookingApproval,
   storeFCMTokenToVendor,
-  vendorCompleteRide, 
+  vendorCompleteRide,
   getVendorBookingsByMonth,
-  getVendorBookingsByMonthAndWeek
+  getVendorBookingsByMonthAndWeek,
+  getVendorBookingsByWeek,
+  getVendorBookingsPaymentByCashByWeek,
+  vendorAdvanceRefund,
+  VendorStartTrip,
+  vendorSendMessage,
 };
-  
